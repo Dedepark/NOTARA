@@ -1,0 +1,200 @@
+/* ============================================
+   NOTARA — Animations & Keyframes
+   ============================================ */
+
+/* ── Core Keyframes ──────────────────────────── */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes card-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes toast-in {
+  from { opacity: 0; transform: translateX(20px) scale(0.96); }
+  to   { opacity: 1; transform: translateX(0) scale(1); }
+}
+
+@keyframes toast-out {
+  from { opacity: 1; transform: translateX(0) scale(1); }
+  to   { opacity: 0; transform: translateX(20px) scale(0.94); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { filter: drop-shadow(0 0 4px var(--accent-glow)); }
+  50%       { filter: drop-shadow(0 0 10px var(--accent-glow)); }
+}
+
+@keyframes shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.92); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+@keyframes ripple {
+  0%   { transform: scale(0); opacity: 0.4; }
+  100% { transform: scale(4); opacity: 0; }
+}
+
+@keyframes bounce-in {
+  0%   { transform: scale(0.75); opacity: 0; }
+  65%  { transform: scale(1.05); opacity: 1; }
+  85%  { transform: scale(0.98); }
+  100% { transform: scale(1); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
+
+@keyframes wipe-in {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0% 0 0); }
+}
+
+/* ── Staggered card animations ───────────────── */
+.notes-grid .note-card:nth-child(1)  { animation-delay: 0ms; }
+.notes-grid .note-card:nth-child(2)  { animation-delay: 30ms; }
+.notes-grid .note-card:nth-child(3)  { animation-delay: 60ms; }
+.notes-grid .note-card:nth-child(4)  { animation-delay: 90ms; }
+.notes-grid .note-card:nth-child(5)  { animation-delay: 120ms; }
+.notes-grid .note-card:nth-child(6)  { animation-delay: 150ms; }
+.notes-grid .note-card:nth-child(7)  { animation-delay: 180ms; }
+.notes-grid .note-card:nth-child(8)  { animation-delay: 210ms; }
+.notes-grid .note-card:nth-child(n+9){ animation-delay: 240ms; }
+
+.flipcard-row .flipcard-wrap:nth-child(1) { animation-delay: 0ms; }
+.flipcard-row .flipcard-wrap:nth-child(2) { animation-delay: 60ms; }
+
+/* ── Skeleton loader ─────────────────────────── */
+.skeleton {
+  background: linear-gradient(90deg,
+    var(--surface) 25%,
+    var(--surface-hover) 50%,
+    var(--surface) 75%
+  );
+  background-size: 800px 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Transition helpers ──────────────────────── */
+.transition-all   { transition: all var(--dur-base) var(--ease-smooth); }
+.transition-fast  { transition: all var(--dur-fast) var(--ease-smooth); }
+.transition-slow  { transition: all var(--dur-slow) var(--ease-smooth); }
+.transition-spring{ transition: all var(--dur-base) var(--ease-spring); }
+
+/* ── Page transition wrapper ─────────────────── */
+.page-enter {
+  animation: page-in var(--dur-slow) var(--ease-out) both;
+}
+.page-exit {
+  animation: fade-in var(--dur-fast) var(--ease-smooth) reverse both;
+}
+
+/* ── Hover lift (utility) ─────────────────────── */
+.hover-lift {
+  transition: transform var(--dur-base) var(--ease-smooth),
+              box-shadow var(--dur-base) var(--ease-smooth);
+}
+.hover-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+}
+
+/* ── Ripple button ───────────────────────────── */
+.ripple-container {
+  position: relative;
+  overflow: hidden;
+}
+.ripple-element {
+  position: absolute;
+  border-radius: 50%;
+  background: var(--accent-light);
+  pointer-events: none;
+  animation: ripple 0.5s var(--ease-out) forwards;
+}
+
+/* ── Floating hint ────────────────────────────── */
+.float-hint {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* ── Smooth theme transition ─────────────────── */
+/* Only applied during an explicit theme-switch (class added by JS for ~400ms) */
+.theme-switching,
+.theme-switching * {
+  transition-property: background-color, color, border-color;
+  transition-duration: var(--dur-slow);
+  transition-timing-function: var(--ease-smooth);
+}
+
+/* Reset transition for animated/interactive elements */
+.flipcard,
+.flipcard-face,
+.note-card,
+.action-popup-inner,
+.modal,
+.toast,
+button,
+a,
+.nav-item,
+.icon-btn,
+.btn-primary,
+.btn-ghost {
+  transition-property: transform, opacity, box-shadow, border-color, background-color, color, filter;
+}
+
+/* ── Glowing accent border ───────────────────── */
+@keyframes glow-border {
+  0%, 100% { box-shadow: 0 0 6px var(--accent-glow); }
+  50%       { box-shadow: 0 0 16px var(--accent-glow); }
+}
+.glow-border {
+  animation: glow-border 2s ease-in-out infinite;
+}
+
+/* ── Save indicator pulse ─────────────────────── */
+@keyframes save-pulse {
+  0%   { opacity: 1; }
+  50%  { opacity: 0.4; }
+  100% { opacity: 1; }
+}
+.saving-pulse {
+  animation: save-pulse 1.2s ease-in-out infinite;
+}
+
+/* ── Reduce motion ───────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
