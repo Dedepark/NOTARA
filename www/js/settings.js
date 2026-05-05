@@ -1,8 +1,6 @@
-/* js/settings.js — Theme & preferences */
+/* js/settings.js - Theme & preferences */
 'use strict';
-
 window.Notara = window.Notara || {};
-
 window.Notara.Settings = (() => {
   const S = window.Notara.Storage;
   const KEY_THEME  = 'settings_theme';
@@ -38,7 +36,6 @@ window.Notara.Settings = (() => {
 
   function cycleTheme() {
     const next = THEMES[(THEMES.indexOf(getTheme()) + 1) % THEMES.length];
-    // Apply transitions ONLY during the theme switch (not on every page render)
     document.documentElement.classList.add('theme-switching');
     setTheme(next);
     setTimeout(() => document.documentElement.classList.remove('theme-switching'), 450);
@@ -50,8 +47,17 @@ window.Notara.Settings = (() => {
     setAccent(getAccent());
   }
 
-  /* ── Helper: notif permission badge ─────────── */
+  /* Helper: notif permission badge */
   function _notifStatusHtml() {
+    // Status untuk Android Native
+    if (window.Capacitor?.isNativePlatform) {
+       if (window.Notara.Reminders.hasPermission()) {
+          return `<span class="notif-status-badge granted"><i class="fa-solid fa-circle-check"></i> Aktif</span>`;
+       } else {
+          return `<span class="notif-status-badge default"><i class="fa-solid fa-circle-exclamation"></i> Belum diaktifkan</span>`;
+       }
+    }
+    // Status untuk Browser PWA
     if (!('Notification' in window)) {
       return `<span class="notif-status-badge unsupported">
         <i class="fa-solid fa-ban"></i> Tidak didukung browser ini
@@ -73,7 +79,7 @@ window.Notara.Settings = (() => {
     </span>`;
   }
 
-  /* ── Render settings page ─────────────────── */
+  /* Render settings page */
   async function renderPage() {
     const main = document.getElementById('app-main');
     window.Notara.UI.setTitle('Pengaturan');
@@ -84,14 +90,17 @@ window.Notara.Settings = (() => {
     const noteCount     = await window.Notara.Notes.count();
     const user          = window.Notara.Auth.getUser();
     const name          = window.Notara.Auth.getName();
-    const notifSupported = 'Notification' in window;
-    const notifGranted   = notifSupported && Notification.permission === 'granted';
-    const notifDenied    = notifSupported && Notification.permission === 'denied';
+    
+    // Evaluasi Izin
+    const isNative = window.Capacitor?.isNativePlatform;
+    const notifSupported = isNative ? true : ('Notification' in window);
+    const notifGranted   = window.Notara.Reminders.hasPermission();
+    const notifDenied    = !isNative && ('Notification' in window) && Notification.permission === 'denied';
 
     main.innerHTML = `
       <div class="settings-page page-enter">
         <h2 style="margin-bottom:var(--space-xl)">Pengaturan</h2>
-
+        
         <!-- Akun -->
         <div class="settings-section">
           <div class="settings-section-title">Akun</div>
@@ -163,7 +172,8 @@ window.Notara.Settings = (() => {
                 ${_notifStatusHtml()}
               </div>
             </div>
-            ${!notifGranted && !notifDenied ? `
+
+            ${!notifGranted && !notifDenied && notifSupported ? `
               <div class="settings-item">
                 <div class="settings-item-left">
                   <span class="settings-item-label">Aktifkan Notifikasi</span>
@@ -176,6 +186,7 @@ window.Notara.Settings = (() => {
                 </button>
               </div>
             ` : ''}
+
             ${notifDenied ? `
               <div class="settings-item">
                 <div class="settings-item-left">
@@ -187,6 +198,7 @@ window.Notara.Settings = (() => {
                 <i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--label-medium)"></i>
               </div>
             ` : ''}
+
             ${notifGranted ? `
               <div class="settings-item">
                 <div class="settings-item-left">
@@ -198,11 +210,12 @@ window.Notara.Settings = (() => {
                 </button>
               </div>
             ` : ''}
+
             <div class="settings-item">
               <div class="settings-item-left">
                 <span class="settings-item-label">Cara Menggunakan Pengingat</span>
                 <span class="settings-item-sub">
-                  Saat membuat catatan baru, pilih tipe "Pengingat" atau "Tenggat Waktu". 
+                  Saat membuat catatan baru, pilih tipe "Pengingat" atau "Tenggat Waktu".
                   Notara akan cek setiap menit dan kirim notifikasi otomatis.
                 </span>
               </div>
@@ -215,17 +228,13 @@ window.Notara.Settings = (() => {
         <div class="settings-section">
           <div class="settings-section-title">Aplikasi</div>
           <div class="settings-card">
-<div class="settings-item" style="cursor:pointer" id="setting-install">
-  <div class="settings-item-left">
-    <span class="settings-item-label">Download Aplikasi (APK)</span>
-    <span class="settings-item-sub">Dapatkan versi Android terbaru</span>
-  </div>
-  <span style="color:var(--accent);font-size:0.85rem">
-    <i class="fa-solid fa-download"></i>
-  </span>
-</div>
+            <div class="settings-item" style="cursor:pointer" id="setting-install">
+              <div class="settings-item-left">
+                <span class="settings-item-label">Download Aplikasi (APK)</span>
+                <span class="settings-item-sub">Dapatkan versi Android terbaru</span>
+              </div>
               <span style="color:var(--accent);font-size:0.85rem">
-                Install <i class="fa-solid fa-arrow-right"></i>
+                <i class="fa-solid fa-download"></i>
               </span>
             </div>
           </div>
@@ -258,9 +267,9 @@ window.Notara.Settings = (() => {
             <div class="settings-item">
               <div class="settings-item-left">
                 <span class="settings-item-label">Notara</span>
-                <span class="settings-item-sub">Versi 2.1.0 — PWA Notes App</span>
+                <span class="settings-item-sub">Versi 2.1.0 • PWA Notes App</span>
               </div>
-              <span style="font-size:1.5rem;color:var(--accent)">◈</span>
+              <span style="font-size:1.5rem;color:var(--accent)">📝</span>
             </div>
           </div>
         </div>
@@ -269,8 +278,6 @@ window.Notara.Settings = (() => {
         <div class="settings-section">
           <div class="settings-section-title">Tentang Pengembang</div>
           <div class="settings-card">
-
-            <!-- Nama pengembang -->
             <div class="settings-item">
               <div class="settings-item-left">
                 <span class="settings-item-label">Dede Putra Cahyana</span>
@@ -278,9 +285,7 @@ window.Notara.Settings = (() => {
               </div>
               <i class="fa-solid fa-circle-user" style="font-size:1.8rem;color:var(--accent)"></i>
             </div>
-
             <div class="divider" style="margin:0"></div>
-
             <div class="settings-item">
               <div class="settings-item-left">
                 <span class="settings-item-label" style="font-size:0.8rem;color:var(--text-3);text-transform:uppercase;letter-spacing:0.06em;font-weight:600">
@@ -289,8 +294,6 @@ window.Notara.Settings = (() => {
                 <span class="settings-item-sub">Hubungi via platform di bawah ini</span>
               </div>
             </div>
-
-            <!-- Email -->
             <a href="mailto:zadpropc@gmail.com" class="settings-item settings-item-link">
               <div class="settings-item-left">
                 <span class="settings-item-label"><i class="fa-solid fa-envelope" style="color:#ea4335;margin-right:8px"></i>Email</span>
@@ -298,8 +301,6 @@ window.Notara.Settings = (() => {
               </div>
               <i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--text-3);font-size:0.8rem"></i>
             </a>
-
-            <!-- WhatsApp -->
             <a href="https://wa.me/6289527003290?text=Halo%20Dede%2C%20aku%20punya%20kritik%2Fsaran%20tentang%20aplikasi%20Notara%3A%20" target="_blank" rel="noopener" class="settings-item settings-item-link">
               <div class="settings-item-left">
                 <span class="settings-item-label"><i class="fa-brands fa-whatsapp" style="color:#25d366;margin-right:8px"></i>WhatsApp</span>
@@ -307,8 +308,6 @@ window.Notara.Settings = (() => {
               </div>
               <i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--text-3);font-size:0.8rem"></i>
             </a>
-
-            <!-- Instagram -->
             <a href="https://www.instagram.com/zadostrix/" target="_blank" rel="noopener" class="settings-item settings-item-link">
               <div class="settings-item-left">
                 <span class="settings-item-label"><i class="fa-brands fa-instagram" style="color:#e1306c;margin-right:8px"></i>Instagram</span>
@@ -316,8 +315,6 @@ window.Notara.Settings = (() => {
               </div>
               <i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--text-3);font-size:0.8rem"></i>
             </a>
-
-            <!-- TikTok -->
             <a href="https://www.tiktok.com/@zadostrix?is_from_webapp=1&sender_device=pc" target="_blank" rel="noopener" class="settings-item settings-item-link">
               <div class="settings-item-left">
                 <span class="settings-item-label"><i class="fa-brands fa-tiktok" style="color:var(--text-1);margin-right:8px"></i>TikTok</span>
@@ -325,7 +322,6 @@ window.Notara.Settings = (() => {
               </div>
               <i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--text-3);font-size:0.8rem"></i>
             </a>
-
           </div>
         </div>
       </div>
@@ -351,48 +347,32 @@ window.Notara.Settings = (() => {
       });
     });
 
-    // ── Aktifkan notifikasi ─────────────────────
+    // Aktifkan notifikasi
     document.getElementById('btn-notif-perm')?.addEventListener('click', async () => {
       const granted = await window.Notara.Reminders.requestPermission();
       if (granted) {
         window.Notara.UI.toast('Notifikasi berhasil diaktifkan!', 'success');
         window.Notara.Reminders.start();
-        // Refresh halaman pengaturan supaya status badge terupdate
         renderPage();
       } else {
-        window.Notara.UI.toast('Izin notifikasi ditolak. Coba aktifkan dari pengaturan browser.', 'error', 5000);
+        window.Notara.UI.toast('Izin notifikasi ditolak. Coba aktifkan dari pengaturan aplikasi/browser.', 'error', 5000);
         renderPage();
       }
     });
 
-    // ── Uji notifikasi ──────────────────────────
+    // Uji notifikasi
     document.getElementById('btn-notif-test')?.addEventListener('click', () => {
       if (!window.Notara.Reminders.hasPermission()) {
         window.Notara.UI.toast('Aktifkan notifikasi terlebih dahulu.', 'warning');
         return;
       }
-      // Kirim notif test via SW / Notification API
-      const options = {
-        body: 'Notifikasi Notara berfungsi dengan baik! 🎉',
-        icon: './ikon.png',
-        badge: './ikon.png',
-        tag: 'notara-test',
-      };
-      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
-        navigator.serviceWorker.ready.then(reg => {
-          reg.showNotification('Notara — Uji Notifikasi', options);
-        });
-      } else {
-        new Notification('Notara — Uji Notifikasi', options);
-      }
+      window.Notara.Reminders.fireImmediate('Notara - Uji Notifikasi', 'Notifikasi Notara berfungsi dengan baik! 🎉', 'test_notif');
       window.Notara.UI.toast('Notifikasi uji dikirim!', 'success');
     });
 
-document.getElementById('setting-install')?.addEventListener('click', () => {
-  // Pastikan mengubah USERNAME dan REPO sesuai dengan link GitHub aslimu!
-  const downloadUrl = 'https://github.com/DedePark/NOTARA/releases/latest/download/Notara.apk';
-  window.open(downloadUrl, '_blank');
-});
+    document.getElementById('setting-install')?.addEventListener('click', () => {
+      window.open('https://github.com/USERNAME/REPO/releases/latest/download/Notara.apk', '_blank');
+    });
 
     document.getElementById('setting-logout')?.addEventListener('click', async () => {
       const ok = await window.Notara.UI.confirm({
