@@ -3,7 +3,6 @@ name: Build and Release APK
 on:
   workflow_dispatch:
 
-# PENTING: Memberikan izin pada bot GitHub untuk membuat Release
 permissions:
   contents: write
 
@@ -21,7 +20,6 @@ jobs:
         with:
           node-version: '18'
 
-      # Solusi Error Permission Denied: Install Capacitor CLI secara global
       - name: Install Dependencies
         run: |
           npm install
@@ -30,11 +28,12 @@ jobs:
       - name: Sync Capacitor
         run: cap sync android
 
+      # DI SINI PERUBAHANNYA: Menggunakan Java 21
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '17'
+          java-version: '21'
 
       - name: Build APK (Debug)
         run: |
@@ -42,11 +41,9 @@ jobs:
           chmod +x gradlew
           ./gradlew assembleDebug
 
-      # Pindahkan dan ganti nama APK ke luar folder agar mudah diambil
       - name: Rename APK
         run: mv android/app/build/outputs/apk/debug/app-debug.apk Notara.apk
 
-      # Otomatis buat Release baru di GitHub dan attach file Notara.apk
       - name: Create Release and Upload APK
         uses: softprops/action-gh-release@v2
         with:
