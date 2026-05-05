@@ -389,8 +389,9 @@ window.Notara.Settings = (() => {
     });
 
 document.getElementById('setting-install')?.addEventListener('click', () => {
-  // Ganti URL ini dengan link halaman rilis GitHub kamu
-  window.open('https://github.com/USERNAME/REPO/releases/latest', '_blank');
+  // Pastikan mengubah USERNAME dan REPO sesuai dengan link GitHub aslimu!
+  const downloadUrl = 'https://github.com/DedePark/NOTARA/releases/latest/download/Notara.apk';
+  window.open(downloadUrl, '_blank');
 });
 
     document.getElementById('setting-logout')?.addEventListener('click', async () => {
