@@ -371,7 +371,7 @@ window.Notara.Settings = (() => {
     });
 
     document.getElementById('setting-install')?.addEventListener('click', () => {
-      window.open('https://github.com/USERNAME/REPO/releases/latest/download/Notara.apk', '_blank');
+      window.open('https://github.com/DedePark/NOTARA/releases/latest/download/Notara.apk', '_blank');
     });
 
     document.getElementById('setting-logout')?.addEventListener('click', async () => {
