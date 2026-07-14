@@ -1,0 +1,172 @@
+/* ============================================
+   NOTARA - CSS Variables & Theme System (Compact Neobrutalism)
+   ============================================ */
+:root {
+  --font-display: 'Sora', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+
+  /* Spacing - Dirampingkan */
+  --space-xs:  0.2rem;
+  --space-sm:  0.4rem;
+  --space-md:  0.75rem;
+  --space-lg:  1rem;
+  --space-xl:  1.25rem;
+  --space-2xl: 2rem;
+
+  /* Font Sizes */
+  --font-size-sm: 0.875rem;  /* 14px */
+  --font-size-md: 1rem;      /* 16px */
+  --font-size-lg: 1.125rem;  /* 18px */
+  --font-size-xl: 1.25rem;   /* 20px */
+
+  /* Base font size (set by data-font-size) */
+  --base-font-size: var(--font-size-md);
+
+  /* Radius - Neobrutalism Siku */
+  --radius-sm:   0px;
+  --radius-md:   0px;
+  --radius-lg:   0px;
+  --radius-xl:   0px;
+  --radius-full: 9999px;
+
+  /* BORDERS & ANIMATIONS - Dibuat lebih tipis & presisi */
+  --border-w: 2px;
+  --btn-transform: translate(2px, 2px);
+
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-smooth: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out:    cubic-bezier(0, 0, 0.2, 1);
+
+  --dur-fast:    120ms;
+  --dur-base:    220ms;
+  --dur-slow:    360ms;
+  --dur-slower:  540ms;
+
+  --label-easy:       #4caf82;
+  --label-easy-bg:    rgba(76, 175, 130, 0.12);
+  --label-medium:     #f5a623;
+  --label-medium-bg:  rgba(245, 166, 35,  0.12);
+  --label-hard:       #ef5e6f;
+  --label-hard-bg:    rgba(239, 94, 111,  0.12);
+
+  --sidebar-w:    240px;
+  --topbar-h:     50px; /* Dirampingkan */
+  --mobile-nav-h: 54px; /* Dirampingkan */
+}
+
+/* DARK (default) */
+[data-theme="dark"] {
+  --bg:            #0d0f14;
+  --bg-2:          #141620;
+  --bg-3:          #1c1e28;
+  --surface:       #1c1e28;
+  --surface-2:     #232530;
+  --surface-hover: #282a36;
+  --border:        #ffffff;
+  --border-strong: #ffffff;
+  --text-1: #eef0f8;
+  --text-2: #8a90a8;
+  --text-3: #50546a;
+  --text-inv: #0d0f14;
+
+  --accent:       #7c6af7;
+  --accent-light: rgba(124,106,247,0.15);
+  --accent-glow:  rgba(124,106,247,0.25);
+
+  --glass-bg:     rgba(28,30,40,0.95);
+  --glass-border: #ffffff;
+
+  /* Shadows Dirampingkan */
+  --shadow-color: var(--accent);
+  --shadow-sm: 2px 2px 0px var(--shadow-color);
+  --shadow-md: 4px 4px 0px var(--shadow-color);
+  --shadow-lg: 6px 6px 0px var(--shadow-color);
+  --shadow-accent: 4px 4px 0px var(--shadow-color);
+  --shadow-active: 0px 0px 0px transparent;
+
+  --sb-track: #141620;
+  --sb-thumb: #ffffff;
+  color-scheme: dark;
+}
+
+/* LIGHT */
+[data-theme="light"] {
+  --bg:            #f5f5fc;
+  --bg-2:          #ffffff;
+  --bg-3:          #ebebf5;
+  --surface:       #ffffff;
+  --surface-2:     #f0f0f9;
+  --surface-hover: #e8e8f3;
+  --border:        #000000;
+  --border-strong: #000000;
+  --text-1: #1a1b2e;
+  --text-2: #5a6080;
+  --text-3: #9498b8;
+  --text-inv: #f0f2f8;
+
+  --accent:       #6557e8;
+  --accent-light: rgba(101,87,232,0.15);
+  --accent-glow:  rgba(101,87,232,0.3);
+
+  --glass-bg:     rgba(255,255,255,0.95);
+  --glass-border: #000000;
+
+  --shadow-color: #000000;
+  --shadow-sm: 2px 2px 0px var(--shadow-color);
+  --shadow-md: 4px 4px 0px var(--shadow-color);
+  --shadow-lg: 6px 6px 0px var(--shadow-color);
+  --shadow-accent: 4px 4px 0px var(--shadow-color);
+  --shadow-active: 0px 0px 0px transparent;
+
+  --sb-track: #ebebf5;
+  --sb-thumb: #000000;
+  color-scheme: light;
+}
+
+/* AMOLED */
+[data-theme="amoled"] {
+  --bg:            #000000;
+  --bg-2:          #060606;
+  --bg-3:          #0d0d0d;
+  --surface:       #0d0d0d;
+  --surface-2:     #161616;
+  --surface-hover: #1e1e1e;
+  --border:        #ffffff;
+  --border-strong: #ffffff;
+  --text-1: #ffffff;
+  --text-2: #848484;
+  --text-3: #404040;
+  --text-inv: #000000;
+
+  --accent:       #a394ff;
+  --accent-light: rgba(163,148,255,0.15);
+  --accent-glow:  rgba(163,148,255,0.3);
+
+  --glass-bg:     rgba(13,13,13,0.95);
+  --glass-border: #ffffff;
+
+  --shadow-color: var(--accent);
+  --shadow-sm: 2px 2px 0px var(--shadow-color);
+  --shadow-md: 4px 4px 0px var(--shadow-color);
+  --shadow-lg: 6px 6px 0px var(--shadow-color);
+  --shadow-accent: 4px 4px 0px var(--shadow-color);
+  --shadow-active: 0px 0px 0px transparent;
+
+  --sb-track: #0d0d0d;
+  --sb-thumb: #ffffff;
+  color-scheme: dark;
+}
+
+/* ACCENT OVERRIDES */
+[data-accent="violet"] { --accent:#7c6af7; --accent-light:rgba(124,106,247,.15); --accent-glow:rgba(124,106,247,.25); }
+[data-accent="teal"]   { --accent:#2dd4bf; --accent-light:rgba(45,212,191,.15);  --accent-glow:rgba(45,212,191,.22); }
+[data-accent="coral"]  { --accent:#ff6b6b; --accent-light:rgba(255,107,107,.15); --accent-glow:rgba(255,107,107,.24); }
+[data-accent="amber"]  { --accent:#f5a623; --accent-light:rgba(245,166,35,.15);  --accent-glow:rgba(245,166,35,.22); }
+[data-accent="rose"]   { --accent:#f472b6; --accent-light:rgba(244,114,182,.15); --accent-glow:rgba(444,114,182,.22); }
+[data-accent="lime"]   { --accent:#84cc16; --accent-light:rgba(132,204,22,.15);  --accent-glow:rgba(132,204,22,.22); }
+
+/* FONT SIZE OVERRIDES */
+[data-font-size="sm"] { --base-font-size: var(--font-size-sm); }
+[data-font-size="md"] { --base-font-size: var(--font-size-md); }
+[data-font-size="lg"] { --base-font-size: var(--font-size-lg); }
+[data-font-size="xl"] { --base-font-size: var(--font-size-xl); }
