@@ -11,6 +11,7 @@ window.Notara.Editor = (() => {
   let _lastSaved     = '';
   let _globalSaveFn  = null;
   let _zenActive     = false;
+  let _currentLabel  = 'medium';
 
   /* ── Toolbar definitions ─────────────────── */
   const TOOLBAR = [
@@ -33,10 +34,10 @@ window.Notara.Editor = (() => {
     {
       group: 'heading',
       btns: [
-        { cmd: 'formatBlock', value: 'h1', icon: '<span class="tb-text">H1</span>', title: 'Heading 1' },
-        { cmd: 'formatBlock', value: 'h2', icon: '<span class="tb-text">H2</span>', title: 'Heading 2' },
-        { cmd: 'formatBlock', value: 'h3', icon: '<span class="tb-text">H3</span>', title: 'Heading 3' },
-        { cmd: 'formatBlock', value: 'p',  icon: '<i class="fa-solid fa-paragraph"></i>', title: 'Paragraph' },
+        { cmd: 'formatBlock', value: '<h1>', icon: '<span class="tb-text">H1</span>', title: 'Heading 1' },
+        { cmd: 'formatBlock', value: '<h2>', icon: '<span class="tb-text">H2</span>', title: 'Heading 2' },
+        { cmd: 'formatBlock', value: '<h3>', icon: '<span class="tb-text">H3</span>', title: 'Heading 3' },
+        { cmd: 'formatBlock', value: '<p>',  icon: '<i class="fa-solid fa-paragraph"></i>', title: 'Paragraph' },
       ]
     },
     {
@@ -79,10 +80,10 @@ window.Notara.Editor = (() => {
     parts.push('<span class="toolbar-sep"></span>');
     parts.push(`
       <select class="toolbar-select" id="font-size-select" title="Ukuran font">
-        <option value="1">Kecil</option>
-        <option value="3" selected>Normal</option>
-        <option value="5">Besar</option>
-        <option value="7">XL</option>
+        <option value="12">Kecil</option>
+        <option value="16" selected>Normal</option>
+        <option value="20">Besar</option>
+        <option value="28">XL</option>
       </select>
     `);
 
@@ -96,6 +97,29 @@ window.Notara.Editor = (() => {
     return parts.join('');
   }
 
+  /* ── Insert styled HTML around selection ──── */
+  function _insertStyledHtml(styleAttr) {
+    const editor = document.getElementById('editor-body');
+    if (!editor) return;
+    editor.focus({ preventScroll: true });
+
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount || sel.isCollapsed) return;
+
+    const range = sel.getRangeAt(0);
+    const frag  = range.cloneContents();
+    const tmp   = document.createElement('div');
+    tmp.appendChild(frag);
+    const inner = tmp.innerHTML || '\u00A0';
+
+    document.execCommand('insertHTML', false,
+      `<span style="${styleAttr}">${inner}</span>`
+    );
+    _snapshot();
+    _scheduleSave();
+    _updateToolbarState();
+  }
+
   /* ── Exec command ────────────────────────── */
   function _exec(cmd, value = null) {
     const editor  = document.getElementById('editor-body');
@@ -107,8 +131,10 @@ window.Notara.Editor = (() => {
 
     if (cmd === '_undo')      { _undo(); return; }
     if (cmd === '_redo')      { _redoFn(); return; }
-    if (cmd === '_highlight') { document.execCommand('hiliteColor', false, '#ffd60066'); return; }
+    if (cmd === '_highlight') { document.execCommand('backColor', false, '#ffd60066'); return; }
     if (cmd === '_checklist') { _insertChecklist(); return; }
+    if (cmd === 'fontSize')   { _insertStyledHtml('font-size:' + value + 'px'); return; }
+    if (cmd === 'foreColor')  { _insertStyledHtml('color:' + value); return; }
     document.execCommand(cmd, false, value);
     _updateToolbarState();
   }
@@ -164,7 +190,16 @@ window.Notara.Editor = (() => {
     });
   }
 
+  function _rgbToHex(rgb) {
+    if (!rgb || rgb.startsWith('#')) return rgb || '#000000';
+    const m = rgb.match(/\d+/g);
+    if (!m || m.length < 3) return '#000000';
+    return '#' + m.slice(0, 3).map(x => (+x).toString(16).padStart(2, '0')).join('');
+  }
+
   function _updateToolbarState() {
+    const editor = document.getElementById('editor-body');
+
     document.querySelectorAll('.toolbar-btn[data-cmd]').forEach(btn => {
       const cmd = btn.dataset.cmd;
       if (['bold','italic','underline','strikeThrough',
@@ -172,7 +207,36 @@ window.Notara.Editor = (() => {
            'justifyLeft','justifyCenter','justifyRight','justifyFull'].includes(cmd)) {
         btn.classList.toggle('active', document.queryCommandState(cmd));
       }
+      if (cmd === 'formatBlock') {
+        const val = btn.dataset.value;
+        const current = document.queryCommandValue('formatBlock').toLowerCase();
+        btn.classList.toggle('active', current === val.replace(/[<>]/g, ''));
+      }
     });
+
+    const sel = window.getSelection();
+    if (sel && sel.rangeCount > 0) {
+      let node = sel.getRangeAt(0).startContainer;
+      if (node.nodeType === Node.TEXT_NODE) node = node.parentElement;
+      if (node && editor && editor.contains(node)) {
+        const computed = window.getComputedStyle(node);
+
+        const sizeEl = document.getElementById('font-size-select');
+        if (sizeEl) {
+          const px = Math.round(parseFloat(computed.fontSize));
+          const closest = [12, 16, 20, 28].reduce((a, b) =>
+            Math.abs(b - px) < Math.abs(a - px) ? b : a
+          );
+          sizeEl.value = closest;
+        }
+
+        const colorEl = document.getElementById('text-color-input');
+        if (colorEl) {
+          const hex = _rgbToHex(computed.color);
+          if (hex) colorEl.value = hex;
+        }
+      }
+    }
   }
 
   /* ── Undo / Redo ─────────────────────────── */
@@ -261,11 +325,10 @@ window.Notara.Editor = (() => {
     if (!_noteId) return;
     const titleEl = document.getElementById('editor-title');
     const bodyEl  = document.getElementById('editor-body');
-    const labelEl = document.querySelector('.label-btn.active-easy, .label-btn.active-medium, .label-btn.active-hard');
 
     const title   = titleEl?.value?.trim() || 'Catatan baru';
     const content = bodyEl?.innerHTML || '';
-    const label   = labelEl?.dataset.label || 'medium';
+    const label   = _currentLabel || 'medium';
 
     const sig = title + '|' + content + '|' + label;
     if (sig === _lastSaved) return;
@@ -297,37 +360,23 @@ window.Notara.Editor = (() => {
     }
   }
 
-  /* ── Build deadline/reminder row HTML ──────── */
-  function _buildDeadlineRow(note) {
-    const hasDeadline  = !!note?.deadline;
-    const hasReminder  = !!note?.reminderAt;
-    const showAddDeadline  = !hasDeadline;
-    const showAddReminder  = !hasReminder;
+  /* ── Topbar for Editor ────────────────────── */
+  function _updateTopbarForEditor() {
+    const topbar = document.getElementById('topbar');
+    if (!topbar) return;
+    const normalItems = topbar.querySelectorAll('.topbar-normal-item');
+    const editorBar = document.getElementById('topbar-editor-bar');
+    normalItems.forEach(el => el.style.display = 'none');
+    if (editorBar) editorBar.style.display = 'flex';
+  }
 
-    function minDT() {
-      const d = new Date(Date.now() + 60_000);
-      d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
-      return d.toISOString().slice(0, 16);
-    }
-
-    const existingBadge = `<div id="editor-deadline-wrap" class="editor-deadline-wrap"></div>`;
-
-    const addButtons = (showAddDeadline || showAddReminder) ? `
-      <div class="editor-add-dt-row">
-        ${showAddDeadline ? `
-          <button type="button" class="btn-ghost editor-add-dt-btn" id="btn-add-deadline" style="font-size:0.78rem;padding:0.3rem 0.7rem">
-            <i class="fa-solid fa-hourglass-half"></i> Tambah Tenggat
-          </button>
-        ` : ''}
-        ${showAddReminder ? `
-          <button type="button" class="btn-ghost editor-add-dt-btn" id="btn-add-reminder" style="font-size:0.78rem;padding:0.3rem 0.7rem">
-            <i class="fa-solid fa-bell"></i> Tambah Pengingat
-          </button>
-        ` : ''}
-      </div>
-    ` : '';
-
-    return existingBadge + addButtons;
+  function _restoreTopbarFromEditor() {
+    const topbar = document.getElementById('topbar');
+    if (!topbar) return;
+    const normalItems = topbar.querySelectorAll('.topbar-normal-item');
+    const editorBar = document.getElementById('topbar-editor-bar');
+    normalItems.forEach(el => el.style.display = '');
+    if (editorBar) editorBar.style.display = 'none';
   }
 
   /* ── Zen Mode ────────────────────────────── */
@@ -429,31 +478,20 @@ window.Notara.Editor = (() => {
     _zenActive = false;
 
     const main = document.getElementById('app-main');
+    const topbar = document.getElementById('topbar');
     main.classList.add('editor-mode');
+    document.body.classList.add('editor-view');
+    topbar?.classList.add('editor-topbar');
     main.innerHTML = `<div class="page-loading"><div class="loader-ring"></div></div>`;
 
     const note = noteId ? await window.Notara.Notes.getById(noteId) : null;
 
+    const currentLabel = note?.label || 'medium';
+    const labelText = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+    const labelColor = { easy: 'var(--label-easy)', medium: 'var(--label-medium)', hard: 'var(--label-hard)' };
+
     main.innerHTML = `
       <div class="editor-page">
-        <div class="editor-header">
-          <button type="button" class="btn-ghost" id="editor-back">
-            <i class="fa-solid fa-arrow-left"></i> Kembali
-          </button>
-          <div style="display:flex;align-items:center;gap:8px">
-            <span class="editor-wordcount" id="editor-wordcount"></span>
-            <span class="editor-status" id="editor-status"></span>
-          </div>
-          <div style="display:flex;gap:4px">
-            <button type="button" class="icon-btn" id="editor-version-btn" title="Riwayat Versi">
-              <i class="fa-solid fa-clock-rotate-left"></i>
-            </button>
-            <button type="button" class="icon-btn" id="editor-zen-btn" title="Zen Mode (F11)">
-              <i class="fa-solid fa-expand"></i>
-            </button>
-          </div>
-        </div>
-
         <input class="editor-title-input" id="editor-title"
           placeholder="Judul catatan..."
           value="${_escAttr(note?.title || '')}">
@@ -469,34 +507,28 @@ window.Notara.Editor = (() => {
           ${note?.content || ''}
         </div>
 
+        <!-- Deadline / Reminder badge -->
+        <div id="editor-deadline-wrap" class="editor-deadline-wrap"></div>
+
         <div class="editor-bottom">
-          <div class="label-selector">
-            <button type="button" class="label-btn ${note?.label === 'easy'   ? 'active-easy'   : ''}" data-label="easy">
-              <i class="fa-solid fa-circle" style="color:var(--label-easy);font-size:0.6rem"></i> Easy
+          <div class="editor-bottom-left">
+            <button type="button" class="btn-ghost" id="editor-label-btn" style="font-size:0.78rem;padding:0.3rem 0.7rem;display:flex;align-items:center;gap:6px">
+              <i class="fa-solid fa-circle" style="color:${labelColor[currentLabel]};font-size:0.6rem"></i> ${labelText[currentLabel]}
             </button>
-            <button type="button" class="label-btn ${note?.label === 'medium' ? 'active-medium' : ''}" data-label="medium">
-              <i class="fa-solid fa-circle" style="color:var(--label-medium);font-size:0.6rem"></i> Medium
+            <button type="button" class="btn-ghost" id="editor-export-btn" style="font-size:0.78rem;padding:0.3rem 0.7rem">
+              <i class="fa-solid fa-download"></i> Export
             </button>
-            <button type="button" class="label-btn ${note?.label === 'hard'   ? 'active-hard'   : ''}" data-label="hard">
-              <i class="fa-solid fa-circle" style="color:var(--label-hard);font-size:0.6rem"></i> Hard
+            ${(!note?.deadline || !note?.reminderAt) ? `
+            <button type="button" class="btn-ghost" id="editor-jadwal-btn" style="font-size:0.78rem;padding:0.3rem 0.7rem">
+              <i class="fa-solid fa-calendar-days"></i> Jadwal
             </button>
+            ` : ''}
           </div>
-          <div style="margin-left:auto;display:flex;gap:8px">
-            <button type="button" class="btn-ghost" id="editor-export-txt">
-              <i class="fa-solid fa-file-lines"></i> TXT
-            </button>
-            <button type="button" class="btn-ghost" id="editor-export-pdf">
-              <i class="fa-solid fa-file-pdf"></i> PDF
-            </button>
+          <div style="margin-left:auto">
             <button type="button" class="btn-primary" id="editor-save">
               <i class="fa-solid fa-floppy-disk"></i> Simpan
             </button>
           </div>
-        </div>
-
-        <!-- Deadline / Reminder section -->
-        <div class="editor-dt-section">
-          ${_buildDeadlineRow(note)}
         </div>
 
         <!-- Zen Mode Exit Hint -->
@@ -505,6 +537,9 @@ window.Notara.Editor = (() => {
         </div>
       </div>
     `;
+
+    // Update topbar for editor mode
+    _updateTopbarForEditor();
 
     if (note) window.Notara.Reminders.renderDeadlineBadge(note);
 
@@ -541,13 +576,37 @@ window.Notara.Editor = (() => {
       _exec(btn.dataset.cmd, btn.dataset.value || null);
     });
 
-    sizeEl?.addEventListener('pointerdown', e => e.preventDefault());
-    sizeEl?.addEventListener('change',  e => { e.preventDefault(); _exec('fontSize', e.target.value); });
-    colorEl?.addEventListener('input',  e => _exec('foreColor', e.target.value));
+    let _savedSel = null;
+
+    sizeEl?.addEventListener('pointerdown', () => {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) _savedSel = sel.getRangeAt(0).cloneRange();
+    });
+    sizeEl?.addEventListener('change', e => {
+      if (_savedSel) {
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(_savedSel);
+        _savedSel = null;
+      }
+      _exec('fontSize', e.target.value);
+    });
+
+    colorEl?.addEventListener('pointerdown', () => {
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) _savedSel = sel.getRangeAt(0).cloneRange();
+    });
+    colorEl?.addEventListener('input', e => {
+      if (_savedSel) {
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(_savedSel);
+      }
+      _exec('foreColor', e.target.value);
+    });
 
     bodyEl?.addEventListener('input', () => { _updateToolbarState(); _scheduleSave(); _checkWikilink(); });
     bodyEl?.addEventListener('keydown', e => {
-      // Wikilink dropdown keyboard nav
       if (_wikilinkDropdownActive()) {
         if (e.key === 'ArrowDown')  { e.preventDefault(); _wikilinkMove(1);  return; }
         if (e.key === 'ArrowUp')    { e.preventDefault(); _wikilinkMove(-1); return; }
@@ -569,13 +628,101 @@ window.Notara.Editor = (() => {
 
     titleEl?.addEventListener('input', _scheduleSave);
 
-    document.querySelectorAll('.label-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.label-btn').forEach(b => { b.className = 'label-btn'; });
-        btn.classList.add('active-' + btn.dataset.label);
-        _scheduleSave();
+    // Label picker
+    const labelColors = { easy: 'var(--label-easy)', medium: 'var(--label-medium)', hard: 'var(--label-hard)' };
+    const labelTextMap = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+    _currentLabel = note?.label || 'medium';
+
+    function _showLabelModal() {
+      window.Notara.UI.modal({
+        title: 'Pilih Label',
+        body: `
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button class="btn-ghost editor-label-option" data-label-pick="easy" style="display:flex;align-items:center;gap:10px;padding:0.7rem 1rem;${_currentLabel === 'easy' ? 'background:var(--surface-hover);border-color:var(--accent)' : ''}">
+              <i class="fa-solid fa-circle" style="color:var(--label-easy);font-size:0.7rem"></i> Easy
+              ${_currentLabel === 'easy' ? '<i class="fa-solid fa-check" style="margin-left:auto;color:var(--accent)"></i>' : ''}
+            </button>
+            <button class="btn-ghost editor-label-option" data-label-pick="medium" style="display:flex;align-items:center;gap:10px;padding:0.7rem 1rem;${_currentLabel === 'medium' ? 'background:var(--surface-hover);border-color:var(--accent)' : ''}">
+              <i class="fa-solid fa-circle" style="color:var(--label-medium);font-size:0.7rem"></i> Medium
+              ${_currentLabel === 'medium' ? '<i class="fa-solid fa-check" style="margin-left:auto;color:var(--accent)"></i>' : ''}
+            </button>
+            <button class="btn-ghost editor-label-option" data-label-pick="hard" style="display:flex;align-items:center;gap:10px;padding:0.7rem 1rem;${_currentLabel === 'hard' ? 'background:var(--surface-hover);border-color:var(--accent)' : ''}">
+              <i class="fa-solid fa-circle" style="color:var(--label-hard);font-size:0.7rem"></i> Hard
+              ${_currentLabel === 'hard' ? '<i class="fa-solid fa-check" style="margin-left:auto;color:var(--accent)"></i>' : ''}
+            </button>
+          </div>
+        `,
+        footer: '',
       });
-    });
+      setTimeout(() => {
+        document.querySelectorAll('.editor-label-option').forEach(btn => {
+          btn.addEventListener('click', () => {
+            _currentLabel = btn.dataset.labelPick;
+            const labelBtn = document.getElementById('editor-label-btn');
+            if (labelBtn) labelBtn.innerHTML = `<i class="fa-solid fa-circle" style="color:${labelColors[_currentLabel]};font-size:0.6rem"></i> ${labelTextMap[_currentLabel]}`;
+            document.getElementById('modal-close')?.click();
+            _scheduleSave();
+          });
+        });
+      }, 60);
+    }
+
+    function _showExportModal() {
+      window.Notara.UI.modal({
+        title: 'Export Catatan',
+        body: `
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <button class="btn-ghost" id="editor-export-txt" style="display:flex;align-items:center;gap:10px;padding:0.7rem 1rem">
+              <i class="fa-solid fa-file-lines"></i> Export TXT
+            </button>
+            <button class="btn-ghost" id="editor-export-pdf" style="display:flex;align-items:center;gap:10px;padding:0.7rem 1rem">
+              <i class="fa-solid fa-file-pdf"></i> Export PDF
+            </button>
+          </div>
+        `,
+        footer: '',
+      });
+      setTimeout(() => {
+        document.getElementById('editor-export-txt')?.addEventListener('click', async () => {
+          document.getElementById('modal-close')?.click();
+          await _doSave();
+          window.Notara.Notes.exportTxt(_noteId);
+        });
+        document.getElementById('editor-export-pdf')?.addEventListener('click', async () => {
+          document.getElementById('modal-close')?.click();
+          await _doSave();
+          window.Notara.Notes.exportPdf(_noteId);
+        });
+      }, 60);
+    }
+
+    function _showJadwalModal() {
+      const items = [];
+      if (!note?.deadline) items.push({ id: 'btn-add-deadline', icon: 'fa-hourglass-half', label: 'Tambah Tenggat' });
+      if (!note?.reminderAt) items.push({ id: 'btn-add-reminder', icon: 'fa-bell', label: 'Tambah Pengingat' });
+      if (!items.length) return;
+      window.Notara.UI.modal({
+        title: 'Jadwal',
+        body: `
+          <div style="display:flex;flex-direction:column;gap:8px">
+            ${items.map(it => `
+              <button class="btn-ghost" id="${it.id}" style="display:flex;align-items:center;gap:10px;padding:0.7rem 1rem">
+                <i class="fa-solid ${it.icon}"></i> ${it.label}
+              </button>
+            `).join('')}
+          </div>
+        `,
+        footer: '',
+      });
+      setTimeout(() => {
+        document.getElementById('btn-add-deadline')?.addEventListener('click', () => { document.getElementById('modal-close')?.click(); _showDatetimePicker('deadline'); });
+        document.getElementById('btn-add-reminder')?.addEventListener('click', () => { document.getElementById('modal-close')?.click(); _showDatetimePicker('reminder'); });
+      }, 60);
+    }
+
+    document.getElementById('editor-label-btn')?.addEventListener('click', _showLabelModal);
+    document.getElementById('editor-export-btn')?.addEventListener('click', _showExportModal);
+    document.getElementById('editor-jadwal-btn')?.addEventListener('click', _showJadwalModal);
 
     document.getElementById('editor-back')?.addEventListener('click', () => {
       _exitZen();
@@ -587,18 +734,6 @@ window.Notara.Editor = (() => {
       await _doSave();
       window.Notara.UI.toast('Catatan disimpan!', 'success');
     });
-
-    document.getElementById('editor-export-txt')?.addEventListener('click', async () => {
-      await _doSave();
-      window.Notara.Notes.exportTxt(_noteId);
-    });
-    document.getElementById('editor-export-pdf')?.addEventListener('click', async () => {
-      await _doSave();
-      window.Notara.Notes.exportPdf(_noteId);
-    });
-
-    document.getElementById('btn-add-deadline')?.addEventListener('click', () => _showDatetimePicker('deadline'));
-    document.getElementById('btn-add-reminder')?.addEventListener('click', () => _showDatetimePicker('reminder'));
 
     // Zen Mode
     document.getElementById('editor-zen-btn')?.addEventListener('click', _toggleZen);
@@ -691,8 +826,7 @@ window.Notara.Editor = (() => {
           document.getElementById('modal-close')?.click();
           window.Notara.Reminders.renderDeadlineBadge(updated);
 
-          if (isDeadline) document.getElementById('btn-add-deadline')?.remove();
-          else            document.getElementById('btn-add-reminder')?.remove();
+          if (updated.deadline && updated.reminderAt) document.getElementById('editor-jadwal-btn')?.remove();
 
           window.Notara.UI.toast(isDeadline ? 'Tenggat waktu ditambahkan!' : 'Pengingat ditambahkan!', 'success');
         } catch(err) {
@@ -868,12 +1002,17 @@ window.Notara.Editor = (() => {
       document.documentElement.dataset.zen = 'false';
     }
 
+    _restoreTopbarFromEditor();
+
     const main = document.getElementById('app-main');
+    const topbar = document.getElementById('topbar');
     if (main) {
-      main.classList.remove('editor-mode');
+      main.classList.remove('editor-mode', 'reader-content');
+      document.body.classList.remove('editor-view', 'reader-view');
       main.style.removeProperty('overflow');
       main.style.removeProperty('padding');
     }
+    topbar?.classList.remove('editor-topbar');
 
     _noteId    = null;
     _undoStack = [];
