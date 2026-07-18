@@ -26,7 +26,7 @@ window.Notara.Settings = (() => {
   ];
   const ALL_ACCENTS = ACCENT_CATEGORIES.flatMap(c => c.colors);
   const STYLES  = ['saas', 'neobrutalism', 'retro-gazette', 'skeuomorphism', 'neumorphism'];
-  const STYLE_LABELS = { saas: 'Modern SaaS', neobrutalism: 'Neobrutalism', 'retro-gazette': 'Retro Gazette', skeuomorphism: 'Skeuomorphism', neumorphism: 'Neumorphism' };
+  const STYLE_LABELS = { saas: 'Normal', neobrutalism: 'Komik', 'retro-gazette': 'Vintage', skeuomorphism: '3D', neumorphism: 'Modern' };
   const FONTS = [
     { id: 'default', label: 'Default (Sora / DM Sans)', display: "'Sora', sans-serif", body: "'DM Sans', sans-serif" },
     { id: 'inter', label: 'Inter', display: "'Inter', sans-serif", body: "'Inter', sans-serif" },

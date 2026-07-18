@@ -20,6 +20,81 @@ body {
 ::-webkit-scrollbar { width: 0; height: 0; }
 html { scrollbar-width: none; }
 
+/* ── Retro Gazette: hatching mixin via custom property ─── */
+[data-style="retro-gazette"] {
+  --hatch-1: repeating-linear-gradient(45deg, transparent, transparent 6px, var(--accent) 6px, var(--accent) 7px);
+  --hatch-2: repeating-linear-gradient(-45deg, transparent, transparent 6px, var(--accent) 6px, var(--accent) 7px);
+}
+
+[data-style="retro-gazette"][data-theme="dark"] {
+  --hatch-opacity: 0.06;
+}
+[data-style="retro-gazette"][data-theme="light"] {
+  --hatch-opacity: 0.06;
+}
+[data-style="retro-gazette"][data-theme="amoled"] {
+  --hatch-opacity: 0.06;
+}
+
+/* ── Retro Gazette element hatching (::after) ──────────── */
+[data-style="retro-gazette"] .note-card,
+[data-style="retro-gazette"] .note-group-card,
+[data-style="retro-gazette"] .post-card,
+[data-style="retro-gazette"] .new-post-card,
+[data-style="retro-gazette"] .comment-item,
+[data-style="retro-gazette"] .modal,
+[data-style="retro-gazette"] .cmd-palette,
+[data-style="retro-gazette"] .action-popup-inner,
+[data-style="retro-gazette"] .toast,
+[data-style="retro-gazette"] .auth-card,
+[data-style="retro-gazette"] .greeting-block,
+[data-style="retro-gazette"] .timeline-content,
+[data-style="retro-gazette"] .settings-card,
+[data-style="retro-gazette"] .pomo-expanded,
+[data-style="retro-gazette"] .pomo-collapsed,
+[data-style="retro-gazette"] .note-type-option,
+[data-style="retro-gazette"] .mobile-fab {
+  position: relative;
+}
+[data-style="retro-gazette"] .note-card::after,
+[data-style="retro-gazette"] .note-group-card::after,
+[data-style="retro-gazette"] .post-card::after,
+[data-style="retro-gazette"] .new-post-card::after,
+[data-style="retro-gazette"] .comment-item::after,
+[data-style="retro-gazette"] .modal::after,
+[data-style="retro-gazette"] .cmd-palette::after,
+[data-style="retro-gazette"] .action-popup-inner::after,
+[data-style="retro-gazette"] .toast::after,
+[data-style="retro-gazette"] .auth-card::after,
+[data-style="retro-gazette"] .greeting-block::after,
+[data-style="retro-gazette"] .timeline-content::after,
+[data-style="retro-gazette"] .settings-card::after,
+[data-style="retro-gazette"] .pomo-expanded::after,
+[data-style="retro-gazette"] .pomo-collapsed::after,
+[data-style="retro-gazette"] .note-type-option::after,
+[data-style="retro-gazette"] .mobile-fab::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+  background: var(--hatch-1), var(--hatch-2);
+  opacity: var(--hatch-opacity);
+}
+
+/* ── Retro Gazette: hatching on medium elements ────────── */
+[data-style="retro-gazette"] .mobile-bottom-nav::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+  background: var(--hatch-1), var(--hatch-2);
+  opacity: var(--hatch-opacity);
+}
+
 /* Typography */
 h1,h2,h3,h4,h5,h6 {
   font-family: var(--font-display);

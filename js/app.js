@@ -826,7 +826,7 @@ window.Notara = window.Notara || {};
         return `<div class="cal-hol-item"><span class="cal-hol-day">${day}</span><span class="cal-hol-name">${v}</span></div>`;
       }).join('');
 
-    const detailHtml = _calSelectedDate ? _buildCalendarDetailHtml(_calSelectedDate) : '<div class="cal-hint">Pilih tanggal untuk menambah pengingat</div>';
+    const detailHtml = _calSelectedDate ? _buildCalendarDetailHtml(_calSelectedDate) : '';
 
     return `
       <div class="cal-layout">
@@ -843,12 +843,6 @@ window.Notara = window.Notara || {};
           <div id="cal-detail">${detailHtml}</div>
         </div>
         <div class="cal-right">
-          ${_calSelectedDate ? `
-          <div class="cal-right-section">
-            <div class="cal-right-title"><i class="fa-solid fa-pen-to-square"></i> Tambah Pengingat <button class="icon-btn cal-close-add" id="cal-close-add" title="Tutup" style="margin-left:auto;width:20px;height:20px;font-size:0.6rem;background:transparent;border:none;box-shadow:none"><i class="fa-solid fa-xmark"></i></button></div>
-            <div class="cal-add-form" id="cal-detail-add">${_buildCalendarAddFormHtml()}</div>
-          </div>
-          ` : ''}
           <div class="cal-right-section cal-expandable" data-expanded="true">
             <div class="cal-right-title cal-toggle"><i class="fa-solid fa-bell"></i> Pengingat Bulan Ini <i class="fa-solid fa-chevron-down cal-toggle-icon"></i></div>
             <div class="cal-expand-body">${reminderListHtml}</div>
@@ -891,7 +885,8 @@ window.Notara = window.Notara || {};
         ${label}
         ${holidayName ? `<span class="cal-detail-holiday"><i class="fa-solid fa-flag"></i> ${holidayName}</span>` : ''}
       </div>
-      ${listHtml ? `<div class="cal-note-list">${listHtml}</div>` : '<div class="cal-empty-msg">Tidak ada pengingat di tanggal ini</div>'}
+      ${listHtml ? `<div class="cal-note-list">${listHtml}</div>` : ''}
+      <button class="btn-ghost cal-add-trigger" id="cal-add-trigger" style="width:100%;margin-top:8px;font-size:0.75rem"><i class="fa-solid fa-plus"></i> Tambah Pengingat</button>
     `;
   }
 
@@ -902,8 +897,64 @@ window.Notara = window.Notara || {};
         <label style="font-size:0.8rem;font-weight:700;color:var(--text-2)">Waktu:</label>
         <input type="time" id="cal-note-time" value="09:00" style="padding:4px 8px;border:var(--border-w) solid var(--border-strong);background:var(--bg);color:var(--text-1);font-weight:700;font-family:var(--font-body);margin-left:auto">
       </div>
-      <button class="btn-primary" id="cal-add-btn" style="width:100%;margin-top:8px"><i class="fa-solid fa-plus"></i> Tambah Pengingat</button>
     `;
+  }
+
+  function _openCalAddSheet() {
+    if (!_calSelectedDate) return;
+    const sheet = document.getElementById('cal-add-sheet');
+    const body  = document.getElementById('cal-add-sheet-body');
+    if (!sheet || !body) return;
+
+    body.innerHTML = `
+      <div style="padding:14px">
+        ${_buildCalendarAddFormHtml()}
+        <button class="btn-primary" id="cal-add-btn" style="width:100%;margin-top:8px"><i class="fa-solid fa-plus"></i> Tambah Pengingat</button>
+      </div>
+    `;
+
+    sheet.classList.add('open');
+    sheet.removeAttribute('aria-hidden');
+
+    document.getElementById('cal-add-btn')?.addEventListener('click', async () => {
+      const titleEl = document.getElementById('cal-note-title');
+      const timeEl  = document.getElementById('cal-note-time');
+      const title   = titleEl?.value.trim();
+      if (!title) { UI.toast('Isi judul pengingat dulu!', 'warning'); return; }
+      const addBtn = document.getElementById('cal-add-btn');
+      addBtn.disabled = true;
+      addBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
+      try {
+        const [y, mo, d] = _calSelectedDate.split('-').map(Number);
+        const [hh, mm] = (timeEl?.value || '09:00').split(':').map(Number);
+        const reminderAt = new Date(y, mo - 1, d, hh, mm).toISOString();
+        const created = await N.create({ title, content: `<p>${_esc(title)}</p>`, label: 'medium' });
+        await N.setReminderAt(created.id, reminderAt);
+        _homeCache = null;
+        const freshNotes = await N.getAll();
+        const freshGroups = await _fetchGroups();
+        const freshTags = await Tg.getTagsForNotes(freshNotes.map(n => n.id)).catch(() => ({}));
+        _homeCache = { allNotes: freshNotes, priority: await N.getPriorityNotes(), groups: freshGroups, tagsMap: freshTags };
+        if (window.Capacitor?.isNativePlatform) Rm.syncNativeSchedules();
+        UI.toast('Pengingat ditambahkan!', 'success');
+        sheet.classList.remove('open');
+        sheet.setAttribute('aria-hidden', 'true');
+        _refreshCal();
+      } catch (err) { UI.toast('Gagal: ' + err.message, 'error'); }
+      addBtn.disabled = false;
+      addBtn.innerHTML = '<i class="fa-solid fa-plus"></i> Tambah Pengingat';
+    });
+
+    function closeSheet() {
+      sheet.classList.remove('open');
+      sheet.setAttribute('aria-hidden', 'true');
+      document.removeEventListener('click', outsideClick);
+    }
+    function outsideClick(e) {
+      if (!sheet.contains(e.target)) closeSheet();
+    }
+    document.getElementById('cal-sheet-close')?.addEventListener('click', closeSheet);
+    setTimeout(() => document.addEventListener('click', outsideClick), 50);
   }
 
   function _bindCalendarEvents(m) {
@@ -927,7 +978,7 @@ window.Notara = window.Notara || {};
         return;
       }
 
-      if (btn?.id === 'cal-close-add' || e.target.closest('#cal-close-add')) { _calSelectedDate = null; _refreshCal(); return; }
+      if (btn?.id === 'cal-add-trigger' || e.target.closest('#cal-add-trigger')) { _openCalAddSheet(); return; }
 
       if (btn?.id === 'cal-prev') { _calMonth--; if (_calMonth < 0) { _calMonth = 11; _calYear--; } _refreshCal(); return; }
       if (btn?.id === 'cal-next') { _calMonth++; if (_calMonth > 11) { _calMonth = 0; _calYear++; } _refreshCal(); return; }
@@ -935,33 +986,6 @@ window.Notara = window.Notara || {};
       if (cell) { _calSelectedDate = cell.dataset.date; _refreshCal(); return; }
 
       if (remItem && !btn?.classList.contains('cal-note-del')) { _calSelectedDate = remItem.dataset.date; _refreshCal(); return; }
-
-      if (btn?.id === 'cal-add-btn') {
-        const titleEl = document.getElementById('cal-note-title');
-        const timeEl  = document.getElementById('cal-note-time');
-        const title   = titleEl?.value.trim();
-        if (!title || !_calSelectedDate) { UI.toast('Isi judul pengingat dulu!', 'warning'); return; }
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
-        try {
-          const [y, mo, d] = _calSelectedDate.split('-').map(Number);
-          const [hh, mm] = (timeEl?.value || '09:00').split(':').map(Number);
-          const reminderAt = new Date(y, mo - 1, d, hh, mm).toISOString();
-          const created = await N.create({ title, content: `<p>${_esc(title)}</p>`, label: 'medium' });
-          await N.setReminderAt(created.id, reminderAt);
-          _homeCache = null;
-          const freshNotes = await N.getAll();
-          const freshGroups = await _fetchGroups();
-          const freshTags = await Tg.getTagsForNotes(freshNotes.map(n => n.id)).catch(() => ({}));
-          _homeCache = { allNotes: freshNotes, priority: await N.getPriorityNotes(), groups: freshGroups, tagsMap: freshTags };
-          if (window.Capacitor?.isNativePlatform) Rm.syncNativeSchedules();
-          UI.toast('Pengingat ditambahkan!', 'success');
-          _refreshCal();
-        } catch (err) { UI.toast('Gagal: ' + err.message, 'error'); }
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fa-solid fa-plus"></i> Tambah Pengingat';
-        return;
-      }
 
       if (btn?.classList.contains('cal-note-del')) {
         const nid = btn.dataset.nid;
@@ -1915,6 +1939,7 @@ window.Notara = window.Notara || {};
         </div>
       </div>
       <div id="action-popup" class="action-popup" role="dialog" aria-label="Aksi catatan" aria-hidden="true"><div class="action-popup-inner"><div class="action-popup-title" id="action-popup-title"></div><div class="action-popup-items" id="action-popup-items" role="list"></div></div></div>
+      <div id="cal-add-sheet" class="action-popup" role="dialog" aria-label="Tambah Pengingat" aria-hidden="true"><div class="action-popup-inner"><div class="action-popup-title" style="display:flex;align-items:center;justify-content:space-between"><span><i class="fa-solid fa-bell"></i> Tambah Pengingat</span><button class="icon-btn" id="cal-sheet-close" style="width:24px;height:24px;font-size:0.7rem"><i class="fa-solid fa-xmark"></i></button></div><div class="action-popup-items" id="cal-add-sheet-body"></div></div></div>
       <div id="toast-container" class="toast-container" role="status" aria-live="polite" aria-atomic="true"></div>
       <div id="modal-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true"><div class="modal" id="modal"><div class="modal-header"><h3 id="modal-title"></h3><button id="modal-close" class="icon-btn" aria-label="Tutup"><i class="fa-solid fa-xmark"></i></button></div><div class="modal-body" id="modal-body"></div><div class="modal-footer" id="modal-footer"></div></div></div>
       <div id="pomodoro-widget" class="pomodoro-widget" style="display:none">

@@ -102,6 +102,8 @@
   display: flex; justify-content: center; align-items: flex-end;
   padding: var(--space-sm); padding-bottom: max(var(--space-sm), env(safe-area-inset-bottom));
 }
+#cal-add-sheet { z-index: 800; }
+@media (max-width: 1024px) { #cal-add-sheet { padding-bottom: max(var(--space-sm), env(safe-area-inset-bottom)); } }
 .action-popup.open { pointer-events: all; }
 @media (max-width: 1024px) { .action-popup { padding-bottom: calc(var(--mobile-nav-h) + env(safe-area-inset-bottom) + var(--space-sm)); } }
 
@@ -151,8 +153,8 @@
 .modal-overlay.open .modal { transform: scale(1) translateY(0); }
 .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: var(--border-w) solid var(--border-strong); background: var(--accent); color: var(--bg); }
 .modal-header h3 { font-size: 1rem; font-weight: 800; color: var(--bg); }
-.modal-header #modal-close { background: transparent; border-color: rgba(255,255,255,0.3); color: #EF4444; box-shadow: none; }
-.modal-header #modal-close:hover { background: #EF4444; color: #fff; border-color: #EF4444; box-shadow: none; transform: none; }
+.modal-header #modal-close { background: var(--bg); border-color: var(--border-strong); color: #EF4444; box-shadow: none; }
+.modal-header #modal-close:hover { background: var(--bg-2); color: #fff; border-color: #EF4444; box-shadow: none; transform: none; }
 .modal-body    { padding: 14px; }
 .modal-body .cal-layout ~ .modal-footer { border-top: var(--border-w) solid var(--border-strong); }
 .modal-footer  { padding: 10px 14px; display: flex; justify-content: flex-end; gap: 8px; border-top: var(--border-w) solid var(--border-strong); }
@@ -162,9 +164,19 @@
   .modal-body .cal-layout ~ .modal-footer { border-top: none; }
   .modal:has(.cal-layout) { max-width: 620px; }
 }
+@media (max-width: 599px) {
+  .modal:has(.cal-layout) { max-width: 100%; height: 100dvh; max-height: 100dvh; border-radius: 0; border: none; display: flex; flex-direction: column; }
+  .modal:has(.cal-layout) .modal-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+  .modal:has(.cal-layout) .cal-layout { height: 100%; max-height: none; display: flex; flex-direction: column; gap: 0; }
+  .modal:has(.cal-layout) .cal-left { flex: none; border-bottom: var(--border-w) solid var(--border-strong); }
+  .modal:has(.cal-layout) .cal-right { flex: 1; min-height: 0; max-height: none; overflow-y: auto; border-top: none; padding-top: 12px; }
+  .modal:has(.cal-layout) .cal-expand-body { max-height: none !important; overflow: visible !important; }
+  .modal:has(.cal-layout) .cal-rem-list { max-height: none; overflow: visible; }
+  .modal:has(.cal-layout) .cal-hol-list { max-height: none; overflow: visible; }
+}
 
 /* Calendar Modal */
-.cal-layout { display: flex; flex-direction: column; gap: 16px; max-height: 70vh; }
+.cal-layout { display: flex; flex-direction: column; gap: 16px; }
 .cal-left { flex-shrink: 0; }
 .cal-right { display: flex; flex-direction: column; gap: 12px; min-height: 0; max-height: 300px; overflow-y: auto; border-top: var(--border-w) solid var(--border-strong); padding-top: 12px; }
 .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
@@ -430,7 +442,12 @@ body.editor-view .mobile-bottom-nav { display: none !important; }
 }
 
 /* Style Picker */
-.style-picker { display: flex; gap: 8px; flex-wrap: wrap; }
+.style-picker { display: flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 480px) {
+  .style-picker { justify-content: flex-end; gap: 6px; }
+  .style-preview { width: 36px; height: 24px; }
+  .style-option span { font-size: 0.55rem; }
+}
 .style-option { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; }
 .style-preview {
   width: 52px; height: 34px; border: var(--border-w) solid var(--border-strong); box-shadow: 2px 2px 0 var(--border-strong); transition: all var(--dur-fast); display: flex; align-items: center; justify-content: center; padding: 4px; overflow: hidden;
