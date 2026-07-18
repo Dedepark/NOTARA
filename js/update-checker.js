@@ -32,7 +32,7 @@ window.Notara = window.Notara || {};
     const { data, error } = await db()
       .from('app_config')
       .select('key, value')
-      .in('key', ['latest_version', 'update_title', 'update_message', 'update_url']);
+      .in('key', ['latest_version', 'update_title', 'update_message']);
     if (error || !data) return null;
     const cfg = {};
     data.forEach(r => { cfg[r.key] = r.value; });
@@ -42,16 +42,11 @@ window.Notara = window.Notara || {};
   function _showUpdateToast(cfg) {
     const title   = cfg.update_title   || 'Update Tersedia';
     const message = cfg.update_message || 'Versi baru tersedia.';
-    const url     = cfg.update_url     || '#';
 
     window.Notara.UI.toast(
       `<div style="display:flex;flex-direction:column;gap:4px">
         <span style="font-weight:900">${title}</span>
         <span style="font-weight:400;font-size:0.8rem;opacity:0.9">${message}</span>
-        <a href="${url}" target="_blank" rel="noopener"
-           style="color:inherit;text-decoration:underline;font-weight:800;font-size:0.8rem">
-          Buka Halaman Update &rarr;
-        </a>
       </div>`,
       'info',
       8000

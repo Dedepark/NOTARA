@@ -1,0 +1,152 @@
+/* ============================================
+   NOTARA - features_v3.css (Tracker Modules)
+   Mood, Habits & Finance Tracker
+   ============================================ */
+
+/* ── TRACKER PAGE BASE ── */
+.tracker-page { animation: page-in var(--dur-slow) var(--ease-out) both; width: 100%; }
+.tracker-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: var(--space-lg); }
+.tracker-header h2 { font-size: 1.1rem; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+
+/* ── MOOD TRACKER ── */
+.mood-form-card { background: var(--surface); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: var(--space-xl); margin-bottom: var(--space-lg); transition: all var(--dur-fast) var(--ease-smooth); }
+.mood-form-card:hover { box-shadow: var(--shadow-md); transform: translate(-1px,-1px); }
+.mood-form-card:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+.mood-question { font-size: 1rem; font-weight: 800; color: var(--text-1); margin-bottom: var(--space-lg); text-align: center; }
+.mood-picker { display: flex; justify-content: center; gap: var(--space-md); margin-bottom: var(--space-lg); flex-wrap: wrap; }
+.mood-btn { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: var(--space-md) var(--space-sm); cursor: pointer; min-width: 70px; border: var(--border-w) solid; border-radius: var(--radius-md); box-shadow: var(--shadow-sm); transition: all var(--dur-fast) var(--ease-smooth); }
+.mood-btn i { font-size: 2rem; transition: color var(--dur-fast); }
+.mood-btn span { font-size: 0.7rem; font-weight: 700; }
+
+[data-color="green"]  { --mood-clr: #4caf82; }
+[data-color="blue"]   { --mood-clr: #3b82f6; }
+[data-color="yellow"] { --mood-clr: #eab308; }
+[data-color="orange"] { --mood-clr: #f97316; }
+[data-color="red"]    { --mood-clr: #ef4444; }
+
+.mood-btn[data-color] { background: var(--mood-clr); border-color: var(--mood-clr); }
+
+.mood-btn i { color: var(--bg); }
+.mood-btn span { color: var(--bg); }
+.mood-btn:hover { background: var(--bg); border-color: var(--mood-clr); box-shadow: var(--shadow-md); transform: translate(-1px,-1px); }
+.mood-btn:hover i { color: var(--mood-clr); }
+.mood-btn:hover span { color: var(--mood-clr); }
+.mood-btn:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+.mood-btn.active { background: var(--bg); border-color: var(--mood-clr); }
+.mood-btn.active i { color: var(--mood-clr); }
+.mood-btn.active span { color: var(--mood-clr); }
+
+.mood-triggers { margin-bottom: var(--space-lg); }
+.mood-triggers-label { font-size: 0.75rem; font-weight: 700; color: var(--text-2); margin-bottom: var(--space-sm); text-transform: uppercase; letter-spacing: 0.04em; }
+.mood-trigger-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.mood-trigger-btn { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; font-size: 0.75rem; font-weight: 700; background: var(--bg); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); cursor: pointer; color: var(--text-2); transition: all var(--dur-fast) var(--ease-smooth); }
+.mood-trigger-btn:hover { background: var(--surface-hover); box-shadow: var(--shadow-md); transform: translate(-1px,-1px); }
+.mood-trigger-btn:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+.mood-trigger-btn.active { background: var(--accent-light); border-color: var(--accent); color: var(--accent); }
+
+.mood-note { margin-bottom: var(--space-lg); }
+.mood-note textarea { width: 100%; padding: 0.6rem 10px; font-size: 0.9rem; font-weight: 700; background: var(--bg); color: var(--text-1); border: var(--border-w) solid var(--border-strong); box-shadow: 2px 2px 0 var(--border-strong); font-family: var(--font-body); resize: vertical; min-height: 70px; transition: all var(--dur-fast); }
+.mood-note textarea:focus { outline: none; border-color: var(--accent); transform: translate(-1px,-1px); box-shadow: 3px 3px 0 var(--accent); }
+
+.mood-submit-row { text-align: center; }
+
+/* ── MOOD SUMMARY ── */
+.mood-summary { background: var(--surface); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: var(--space-xl); margin-bottom: var(--space-lg); text-align: center; transition: all var(--dur-fast) var(--ease-smooth); }
+.mood-summary:hover { box-shadow: var(--shadow-md); transform: translate(-1px,-1px); }
+.mood-summary:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+.mood-summary-icon { font-size: 3rem; margin-bottom: var(--space-md); }
+.mood-summary-icon[data-color] i { color: var(--mood-clr); }
+.mood-summary-label { font-size: 1rem; font-weight: 800; color: var(--text-1); margin-bottom: var(--space-sm); }
+.mood-summary-date { font-size: 0.8rem; color: var(--text-3); margin-bottom: var(--space-md); }
+.mood-summary-triggers { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: var(--space-md); }
+.mood-summary-trigger { font-size: 0.7rem; font-weight: 700; padding: 3px 10px; background: var(--accent-light); color: var(--accent); border: var(--border-w) solid var(--accent-glow); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); }
+.mood-summary-note { font-size: 0.85rem; color: var(--text-2); font-style: italic; padding: var(--space-sm); background: var(--bg); border: var(--border-w) solid var(--border-strong); }
+
+/* ── MOOD HISTORY ── */
+.mood-history { background: var(--surface); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: var(--space-lg); margin-bottom: var(--space-lg); transition: all var(--dur-fast) var(--ease-smooth); }
+.mood-history:hover { box-shadow: var(--shadow-md); transform: translate(-1px,-1px); }
+.mood-history:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+.mood-history-title { font-size: 0.75rem; font-weight: 800; color: var(--text-1); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: var(--space-md); display: flex; align-items: center; gap: 6px; }
+.mood-week-row { display: flex; justify-content: space-between; align-items: center; gap: 4px; }
+.mood-day { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; }
+.mood-day-label { font-size: 0.6rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; }
+.mood-day-icon { font-size: 1.2rem; }
+.mood-day-icon.filled[data-color] i { color: var(--mood-clr); }
+.mood-day-empty { width: 1.2rem; height: 1.2rem; border: 2px dashed var(--border-strong); opacity: 0.4; }
+
+/* ── HABIT TRACKER ── */
+.habit-checklist { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--space-lg); }
+.habit-item { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); background: var(--surface); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); cursor: pointer; transition: all var(--dur-fast) var(--ease-smooth); }
+.habit-item:hover { transform: translate(-1px,-1px); box-shadow: var(--shadow-md); }
+.habit-item:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+.habit-item.completed { opacity: 0.7; background: var(--surface-2); }
+.habit-checkbox { width: 20px; height: 20px; border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-sm); background: var(--bg); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all var(--dur-fast); }
+.habit-checkbox.checked { background: var(--label-easy); border-color: var(--label-easy); }
+.habit-checkbox.checked::after { content: '✔'; color: var(--bg); font-size: 0.75rem; font-weight: 900; }
+.habit-item-name { flex: 1; font-size: 0.85rem; font-weight: 700; color: var(--text-1); }
+.habit-item.completed .habit-item-name { text-decoration: line-through; color: var(--text-3); }
+.habit-item-streak { font-size: 0.65rem; color: var(--text-3); font-weight: 700; white-space: nowrap; }
+
+.habit-progress-card { background: var(--surface); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: var(--space-lg); margin-bottom: var(--space-lg); }
+.habit-progress-card:hover { box-shadow: var(--shadow-md); transform: translate(-1px,-1px); }
+.habit-progress-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm); }
+.habit-progress-label { font-size: 0.7rem; font-weight: 700; color: var(--text-2); text-transform: uppercase; }
+.habit-progress-pct { font-size: 1.2rem; font-weight: 800; color: var(--accent); }
+.habit-progress-bar { height: 8px; background: var(--bg); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-sm); overflow: hidden; }
+.habit-progress-fill { height: 100%; background: var(--accent); border-radius: var(--radius-sm); transition: width var(--dur-base) var(--ease-smooth); }
+
+/* ── FINANCE TRACKER ── */
+.finance-balance-card { background: var(--surface); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: var(--space-xl); text-align: center; margin-bottom: var(--space-lg); }
+.finance-balance-card:hover { box-shadow: var(--shadow-md); transform: translate(-1px,-1px); }
+.finance-balance-label { font-size: 0.7rem; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+.finance-balance-amount { font-size: 1.8rem; font-weight: 800; color: var(--accent); }
+.finance-balance-row { display: flex; justify-content: center; gap: var(--space-xl); margin-top: var(--space-md); }
+.finance-balance-item { text-align: center; }
+.finance-balance-item.income .amount { color: var(--label-easy); }
+.finance-balance-item.expense .amount { color: var(--label-hard); }
+.finance-balance-item .label { font-size: 0.6rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; }
+.finance-balance-item .amount { font-size: 0.95rem; font-weight: 800; }
+
+.finance-actions { display: flex; gap: var(--space-sm); margin-bottom: var(--space-lg); }
+.finance-actions .btn-primary { flex: 1; }
+
+.finance-transaction-list { display: flex; flex-direction: column; gap: 4px; }
+.finance-tx { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); background: var(--surface); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); transition: all var(--dur-fast) var(--ease-smooth); }
+.finance-tx:hover { transform: translate(-1px,-1px); box-shadow: var(--shadow-md); }
+.finance-tx:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+.finance-tx-icon { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-sm); flex-shrink: 0; font-size: 0.85rem; }
+.finance-tx-icon.income { background: var(--label-easy-bg); color: var(--label-easy); }
+.finance-tx-icon.expense { background: var(--label-hard-bg); color: var(--label-hard); }
+.finance-tx-info { flex: 1; }
+.finance-tx-category { font-size: 0.8rem; font-weight: 700; color: var(--text-1); }
+.finance-tx-desc { font-size: 0.7rem; color: var(--text-3); }
+.finance-tx-date { font-size: 0.6rem; color: var(--text-3); }
+.finance-tx-amount { font-size: 0.85rem; font-weight: 800; white-space: nowrap; }
+.finance-tx-amount.income { color: var(--label-easy); }
+.finance-tx-amount.expense { color: var(--label-hard); }
+.finance-tx-delete { color: var(--text-3); font-size: 0.7rem; cursor: pointer; padding: 4px; }
+.finance-tx-delete:hover { color: var(--label-hard); }
+
+.finance-category-breakdown { margin-top: var(--space-lg); }
+.finance-cat-row { display: flex; align-items: center; gap: var(--space-sm); padding: 6px 0; }
+.finance-cat-color { width: 8px; height: 8px; border: var(--border-w) solid var(--border-strong); border-radius: 2px; flex-shrink: 0; }
+.finance-cat-name { font-size: 0.75rem; font-weight: 700; color: var(--text-1); flex: 1; }
+.finance-cat-bar { height: 6px; background: var(--bg); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-sm); flex: 2; }
+.finance-cat-fill { height: 100%; border-radius: var(--radius-sm); transition: width var(--dur-base) var(--ease-smooth); }
+.finance-cat-amount { font-size: 0.75rem; font-weight: 800; color: var(--text-2); min-width: 70px; text-align: right; }
+
+/* ── FINANCE FORM ── */
+.finance-type-toggle { display: flex; gap: 0; margin-bottom: var(--space-lg); }
+.finance-type-btn { flex: 1; padding: var(--space-sm); text-align: center; font-size: 0.85rem; font-weight: 700; border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-md); cursor: pointer; background: var(--bg); color: var(--text-2); transition: all var(--dur-fast) var(--ease-smooth); }
+.finance-type-btn:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; border-right: none; }
+.finance-type-btn:last-child { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.finance-type-btn:hover { transform: translate(-1px,-1px); box-shadow: var(--shadow-sm); }
+.finance-type-btn:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+.finance-type-btn.active.income { background: var(--label-easy-bg); color: var(--label-easy); border-color: var(--label-easy); }
+.finance-type-btn.active.expense { background: var(--label-hard-bg); color: var(--label-hard); border-color: var(--label-hard); }
+
+.finance-field { margin-bottom: var(--space-md); }
+.finance-field label { display: block; font-size: 0.7rem; font-weight: 700; color: var(--text-2); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+.finance-field input, .finance-field select { width: 100%; padding: 0.6rem 10px; font-size: 0.9rem; font-weight: 700; background: var(--bg); color: var(--text-1); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-md); box-shadow: 2px 2px 0 var(--border-strong); font-family: var(--font-body); transition: all var(--dur-fast); }
+.finance-field input:focus, .finance-field select:focus { outline: none; border-color: var(--accent); transform: translate(-1px,-1px); box-shadow: 3px 3px 0 var(--accent); }
+.finance-field select { appearance: none; cursor: pointer; }

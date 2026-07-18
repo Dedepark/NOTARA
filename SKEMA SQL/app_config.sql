@@ -15,8 +15,7 @@ CREATE TABLE public.app_config (
 INSERT INTO public.app_config (key, value) VALUES
   ('latest_version', '2.3.0'),
   ('update_title', 'Notara v2.3.0'),
-  ('update_message', 'Versi baru tersedia dengan perbaikan dan peningkatan fitur.'),
-  ('update_url', 'https://notara-app.vercel.app');
+  ('update_message', 'Versi baru tersedia dengan perbaikan dan peningkatan fitur.');
 
 -- ============================================
 -- RLS (Row Level Security)

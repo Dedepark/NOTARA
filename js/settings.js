@@ -560,8 +560,13 @@ window.Notara.Settings = (() => {
       const sub = btn?.querySelector('.settings-item-sub');
       if (label) label.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="color:var(--accent);margin-right:8px"></i>Memeriksa...';
       if (sub) sub.textContent = 'Sedang menghubungi server...';
-      await window.Notara.UpdateChecker.checkForUpdate(false);
-      renderPage();
+      const hasUpdate = await window.Notara.UpdateChecker.checkForUpdate(true);
+      if (hasUpdate) {
+        location.reload();
+      } else {
+        window.Notara.UI.toast('Kamu sudah menggunakan versi terbaru!', 'success');
+        renderPage();
+      }
     });
 
     document.getElementById('setting-logout')?.addEventListener('click', async () => {

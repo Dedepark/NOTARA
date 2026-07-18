@@ -1906,6 +1906,9 @@ window.Notara = window.Notara || {};
             <a href="#search" class="nav-item" data-page="search"><span class="nav-icon"><i class="fa-solid fa-magnifying-glass"></i></span><span class="nav-label">Cari</span></a>
             <a href="#timeline" class="nav-item" data-page="timeline"><span class="nav-icon"><i class="fa-regular fa-clock"></i></span><span class="nav-label">Timeline</span></a>
             <a href="#posts" class="nav-item" data-page="posts"><span class="nav-icon"><i class="fa-solid fa-quote-left"></i></span><span class="nav-label">Publikasi</span></a>
+            <a href="#mood" class="nav-item" data-page="mood"><span class="nav-icon"><i class="ph ph-smiley" style="font-size:1rem"></i></span><span class="nav-label">Mood</span></a>
+            <a href="#habits" class="nav-item" data-page="habits"><span class="nav-icon"><i class="ph ph-check-circle" style="font-size:1rem"></i></span><span class="nav-label">Kebiasaan</span></a>
+            <a href="#finance" class="nav-item" data-page="finance"><span class="nav-icon"><i class="ph ph-wallet" style="font-size:1rem"></i></span><span class="nav-label">Keuangan</span></a>
             <a href="#tags" class="nav-item" data-page="tags"><span class="nav-icon"><i class="fa-solid fa-tags"></i></span><span class="nav-label">Tag</span></a>
             <a href="#trash" class="nav-item" data-page="trash"><span class="nav-icon"><i class="fa-solid fa-trash-can"></i></span><span class="nav-label">Sampah</span></a>
             <a href="#settings" class="nav-item" data-page="settings"><span class="nav-icon"><i class="fa-solid fa-gear"></i></span><span class="nav-label">Pengaturan</span></a>
@@ -1978,6 +1981,9 @@ window.Notara = window.Notara || {};
     R.on('posts',    () => { _exitMultiSelect(); UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); _renderPosts(); });
     R.on('trash',    () => { _exitMultiSelect(); UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); _renderTrash(); });
     R.on('settings', () => { UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); S.renderPage(); });
+    R.on('mood',     () => { _exitMultiSelect(); UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); window.Notara.MoodTracker.renderPage(); });
+    R.on('habits',   () => { _exitMultiSelect(); UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); window.Notara.HabitTracker.renderPage(); });
+    R.on('finance',  () => { _exitMultiSelect(); UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); window.Notara.FinanceTracker.renderPage(); });
 
     N.onChange(() => UI.updateStorageIndicator());
     Rm.start();
