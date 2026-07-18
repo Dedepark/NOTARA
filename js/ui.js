@@ -34,6 +34,7 @@ window.Notara.UI = (() => {
     const elBody   = document.getElementById('modal-body');
     const elFoot   = document.getElementById('modal-footer');
     const closeBtn = document.getElementById('modal-close');
+    const toastCnt = document.getElementById('toast-container');
 
     elTitle.innerHTML = title;
     elBody.innerHTML    = body;
@@ -41,6 +42,7 @@ window.Notara.UI = (() => {
 
     overlay.classList.add('open');
     overlay.removeAttribute('aria-hidden');
+    if (toastCnt) toastCnt.style.zIndex = '800';
 
     function close() {
       overlay.classList.remove('open');
@@ -49,6 +51,7 @@ window.Notara.UI = (() => {
       elFoot.innerHTML = '';
       closeBtn.onclick = null;
       overlay.onclick  = null;
+      if (toastCnt) toastCnt.style.zIndex = '';
       if (onClose) onClose();
     }
 
@@ -164,28 +167,21 @@ window.Notara.UI = (() => {
     const menuBtn  = document.getElementById('menu-btn');
     const closeBtn = document.getElementById('sidebar-close');
 
-    function _hideFab() {
-      const fab = document.getElementById('mobile-fab-btn');
-      if (fab) fab.style.display = 'none';
-    }
-    function _restoreFab() {
-      const fab = document.getElementById('mobile-fab-btn');
-      // Only restore if the current route says FAB should be visible
-      if (fab && window._fabVisible !== false) fab.style.display = '';
-    }
-
     function open()  {
       sidebar.classList.add('open');
       overlay.classList.add('active');
-      _hideFab();
     }
     function close() {
       sidebar.classList.remove('open');
       overlay.classList.remove('active');
-      _restoreFab();
     }
 
-    menuBtn?.addEventListener('click', open);
+    function toggle() {
+      if (sidebar.classList.contains('open')) close();
+      else open();
+    }
+
+    menuBtn?.addEventListener('click', toggle);
     closeBtn?.addEventListener('click', close);
     overlay?.addEventListener('click', close);
 
@@ -195,7 +191,7 @@ window.Notara.UI = (() => {
       });
     });
 
-    return { open, close };
+    return { open, close, toggle };
   }
 
   /* ── Active nav ────────────────────────────── */

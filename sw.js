@@ -101,7 +101,7 @@ async function networkFirst(request, cacheName) {
           button{margin-top:1rem;padding:.6rem 1.4rem;background:#7c6af7;color:#fff;
           border:none;border-radius:9999px;cursor:pointer;font-size:.9rem}
         </style></head><body>
-        <div class="icon">◈</div>
+        <div class="icon"><img src="ikon-transparant.png" alt="Notara" width="48" height="48"></div>
         <h2>Notara — Offline</h2>
         <p>Tidak ada koneksi internet. Data kamu aman di Supabase.</p>
         <button onclick="location.reload()">Coba Lagi</button>
@@ -135,8 +135,8 @@ self.addEventListener('push', e => {
   e.waitUntil(
     self.registration.showNotification(data.title, {
       body:  data.body,
-      icon:  './ikon.png',
-      badge: './ikon.png',
+      icon:  './ikon-transparant.png',
+      badge: './ikon-transparant.png',
     })
   );
 });

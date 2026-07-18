@@ -79,19 +79,43 @@ window.Notara.Editor = (() => {
 
     parts.push('<span class="toolbar-sep"></span>');
     parts.push(`
-      <select class="toolbar-select" id="font-size-select" title="Ukuran font">
-        <option value="12">Kecil</option>
-        <option value="16" selected>Normal</option>
-        <option value="20">Besar</option>
-        <option value="28">XL</option>
-      </select>
+      <div class="dropdown-wrap toolbar-dropdown" data-dropdown="toolbar-fontsize">
+        <button type="button" class="dropdown-trigger toolbar-dropdown-trigger" data-dropdown-toggle="toolbar-fontsize" title="Ukuran font">
+          <span class="dropdown-value" id="font-size-value">Normal</span>
+          <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
+        </button>
+        <div class="dropdown-menu toolbar-dropdown-menu" id="toolbar-dropdown-fontsize">
+          <div class="dropdown-item" data-toolbar-size="12">Kecil</div>
+          <div class="dropdown-item active" data-toolbar-size="16">Normal</div>
+          <div class="dropdown-item" data-toolbar-size="20">Besar</div>
+          <div class="dropdown-item" data-toolbar-size="28">XL</div>
+        </div>
+      </div>
     `);
 
     parts.push('<span class="toolbar-sep"></span>');
+    const COLOR_PALETTE = [
+      { name: 'Solid', colors: ['#EF4444','#F97316','#EAB308','#22C55E','#3B82F6','#6366F1','#A855F7'] },
+      { name: 'Pastel', colors: ['#FCA5A5','#FDBA74','#FDE047','#86EFAC','#93C5FD','#A5B4FC','#C4B5FD'] },
+      { name: 'Deep', colors: ['#991B1B','#9A3412','#854D0E','#166534','#1E40AF','#3730A3','#6B21A8'] },
+    ];
     parts.push(`
-      <input type="color" id="text-color-input" title="Warna teks"
-        style="width:26px;height:26px;border-radius:var(--radius-sm);border:1px solid var(--border);cursor:pointer;background:none;padding:1px;"
-        value="#7c6af7">
+      <div class="dropdown-wrap toolbar-dropdown" data-dropdown="toolbar-color">
+        <button type="button" class="dropdown-trigger toolbar-dropdown-trigger" data-dropdown-toggle="toolbar-color" title="Warna teks">
+          <span class="toolbar-color-btn" id="toolbar-color-indicator" style="background:#7c6af7"></span>
+          <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
+        </button>
+        <div class="dropdown-menu toolbar-dropdown-menu toolbar-color-menu" id="toolbar-dropdown-color">
+          ${COLOR_PALETTE.map(cat => `
+            <div class="toolbar-color-cat">
+              <div class="toolbar-color-cat-label">${cat.name}</div>
+              <div class="toolbar-color-row">
+                ${cat.colors.map(c => `<button type="button" class="toolbar-color-swatch" data-color="${c}" style="background:${c}" title="${c}"></button>`).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
     `);
 
     return parts.join('');
@@ -221,19 +245,24 @@ window.Notara.Editor = (() => {
       if (node && editor && editor.contains(node)) {
         const computed = window.getComputedStyle(node);
 
-        const sizeEl = document.getElementById('font-size-select');
-        if (sizeEl) {
+        const sizeLabels = {12:'Kecil',16:'Normal',20:'Besar',28:'XL'};
+        const sizeValue = document.getElementById('font-size-value');
+        const sizeWrap = document.querySelector('[data-dropdown="toolbar-fontsize"]');
+        if (sizeValue && sizeWrap) {
           const px = Math.round(parseFloat(computed.fontSize));
           const closest = [12, 16, 20, 28].reduce((a, b) =>
             Math.abs(b - px) < Math.abs(a - px) ? b : a
           );
-          sizeEl.value = closest;
+          sizeValue.textContent = sizeLabels[closest];
+          sizeWrap.querySelectorAll('[data-toolbar-size]').forEach(x => {
+            x.classList.toggle('active', x.dataset.toolbarSize == closest);
+          });
         }
 
-        const colorEl = document.getElementById('text-color-input');
-        if (colorEl) {
+        const colorIndicator = document.getElementById('toolbar-color-indicator');
+        if (colorIndicator) {
           const hex = _rgbToHex(computed.color);
-          if (hex) colorEl.value = hex;
+          if (hex) colorIndicator.style.background = hex;
         }
       }
     }
@@ -307,6 +336,9 @@ window.Notara.Editor = (() => {
       const prev = parseInt(localStorage.getItem(key) || '0', 10);
       localStorage.setItem(key, Math.max(prev, words));
     } catch {}
+    if (window.Notara.Activity) {
+      window.Notara.Activity.trackWords(words);
+    }
   }
 
   /* ── Auto-save ───────────────────────────── */
@@ -561,8 +593,6 @@ window.Notara.Editor = (() => {
     const toolbar = document.getElementById('editor-toolbar');
     const bodyEl  = document.getElementById('editor-body');
     const titleEl = document.getElementById('editor-title');
-    const sizeEl  = document.getElementById('font-size-select');
-    const colorEl = document.getElementById('text-color-input');
 
     toolbar?.addEventListener('pointerdown', e => {
       const btn = e.target.closest('.toolbar-btn');
@@ -578,31 +608,67 @@ window.Notara.Editor = (() => {
 
     let _savedSel = null;
 
-    sizeEl?.addEventListener('pointerdown', () => {
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount > 0) _savedSel = sel.getRangeAt(0).cloneRange();
-    });
-    sizeEl?.addEventListener('change', e => {
-      if (_savedSel) {
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(_savedSel);
-        _savedSel = null;
-      }
-      _exec('fontSize', e.target.value);
+    toolbar?.querySelectorAll('.toolbar-dropdown-trigger').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const wrap = this.closest('.dropdown-wrap');
+        const isOpen = wrap.classList.contains('open');
+        document.querySelectorAll('.dropdown-wrap.open').forEach(w => w.classList.remove('open'));
+        if (!isOpen) wrap.classList.add('open');
+      });
     });
 
-    colorEl?.addEventListener('pointerdown', () => {
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount > 0) _savedSel = sel.getRangeAt(0).cloneRange();
+    toolbar?.querySelectorAll('[data-toolbar-size]').forEach(el => {
+      el.addEventListener('click', function() {
+        const val = el.dataset.toolbarSize;
+        const wrap = el.closest('.dropdown-wrap');
+        wrap.querySelector('.dropdown-value').textContent = el.textContent.trim();
+        wrap.querySelectorAll('.dropdown-item').forEach(x => x.classList.remove('active'));
+        el.classList.add('active');
+        wrap.classList.remove('open');
+        if (_savedSel) {
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(_savedSel);
+          _savedSel = null;
+        }
+        _exec('fontSize', val);
+      });
     });
-    colorEl?.addEventListener('input', e => {
-      if (_savedSel) {
+
+    toolbar?.querySelectorAll('[data-toolbar-size]').forEach(el => {
+      el.addEventListener('pointerdown', () => {
         const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(_savedSel);
-      }
-      _exec('foreColor', e.target.value);
+        if (sel && sel.rangeCount > 0) _savedSel = sel.getRangeAt(0).cloneRange();
+      });
+    });
+
+    document.addEventListener('click', () => {
+      toolbar?.querySelectorAll('.dropdown-wrap.open').forEach(w => w.classList.remove('open'));
+    });
+
+    toolbar?.querySelectorAll('.toolbar-color-swatch').forEach(el => {
+      el.addEventListener('pointerdown', () => {
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount > 0) _savedSel = sel.getRangeAt(0).cloneRange();
+      });
+    });
+    toolbar?.querySelectorAll('.toolbar-color-swatch').forEach(el => {
+      el.addEventListener('click', function(e) {
+        e.stopPropagation();
+        const color = el.dataset.color;
+        const indicator = document.getElementById('toolbar-color-indicator');
+        if (indicator) indicator.style.background = color;
+        const wrap = el.closest('.dropdown-wrap');
+        if (wrap) wrap.classList.remove('open');
+        if (_savedSel) {
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(_savedSel);
+          _savedSel = null;
+        }
+        _exec('foreColor', color);
+      });
     });
 
     bodyEl?.addEventListener('input', () => { _updateToolbarState(); _scheduleSave(); _checkWikilink(); });

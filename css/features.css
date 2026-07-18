@@ -1,13 +1,20 @@
 /* ============================================
    NOTARA - Features CSS
    ============================================ */
-.trash-page { animation: page-in var(--dur-slow) var(--ease-out) both; max-width: 680px; }
+.trash-page { animation: page-in var(--dur-slow) var(--ease-out) both; width: 100%; }
 .trash-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; gap: 10px; border-bottom: var(--border-w) solid var(--border-strong); padding-bottom: 8px; }
 .trash-header h2 { display: flex; align-items: center; gap: 6px; }
 .trash-info { font-size: 0.75rem; font-weight: 700; color: var(--text-1); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; background: var(--surface); border: var(--border-w) solid var(--border-strong); padding: 8px; box-shadow: var(--shadow-sm); }
 .trash-grid { display: flex; flex-direction: column; gap: 8px; }
 .trash-card { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px; background: var(--surface); border: var(--border-w) solid var(--border-strong); box-shadow: var(--shadow-sm); animation: card-in var(--dur-base) var(--ease-out) both; transition: all var(--dur-fast); flex-wrap: wrap; }
 .trash-card:hover { transform: translate(-1px,-1px); box-shadow: var(--shadow-md); }
+
+.home-top-row { display: flex; flex-direction: column; gap: 14px; margin-bottom: 14px; }
+.home-top-row > * { flex: 1 1 0; min-width: 0; }
+
+@media (min-width: 768px) {
+  .home-top-row { flex-direction: row; }
+}
 .trash-card-body { flex: 1; min-width: 0; }
 .trash-card-title { font-size: 0.9rem; font-weight: 800; color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .trash-card-meta { font-size: 0.7rem; font-weight: 600; color: var(--text-2); margin-top: 2px; display: flex; align-items: center; gap: 4px; }
@@ -30,17 +37,24 @@
 .shortcut-plus { color: var(--text-1); font-size: 0.75rem; font-weight: 900;}
 .shortcut-desc { color: var(--text-1); font-size: 0.8rem; font-weight: 700; text-align: right;}
 
-.stats-bar { display: flex; align-items: center; gap: 10px; padding: 10px; background: var(--surface); border: var(--border-w) solid var(--border-strong); box-shadow: var(--shadow-sm); margin-bottom: 14px; flex-wrap: wrap; }
-.stat-pill { display: flex; align-items: center; gap: 4px; font-size: 0.8rem; font-weight: 800; color: var(--text-1); flex-shrink: 0; border: var(--border-w) solid var(--border-strong); padding: 2px 6px; background: var(--bg); }
-.stat-pill i { font-size: 0.85rem; color: var(--accent); }
+.stats-card { background: var(--surface); border: var(--border-w) solid var(--border-strong); box-shadow: var(--shadow-sm); margin-bottom: 0; }
+.stats-header { font-size: 0.75rem; font-weight: 800; color: var(--text-1); text-transform: uppercase; padding: 10px 12px 8px; display: flex; align-items: center; gap: 6px; border-bottom: var(--border-w) solid var(--border-strong); }
+.stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; }
+.stats-item { display: flex; align-items: center; gap: 10px; padding: 12px; border-right: var(--border-w) solid var(--border-strong); }
+.stats-item:last-child { border-right: none; }
+.stats-item-icon { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; flex-shrink: 0; }
+.stats-item-info { min-width: 0; }
+.stats-item-value { font-size: 1.1rem; font-weight: 900; color: var(--text-1); line-height: 1; }
+.stats-item-label { font-size: 0.65rem; font-weight: 700; color: var(--text-2); margin-top: 2px; }
+.stats-week-title { font-size: 0.7rem; font-weight: 800; color: var(--text-2); text-transform: uppercase; padding: 8px 12px 0; border-top: var(--border-w) solid var(--border-strong); }
 
 .editor-wordcount { font-size: 0.75rem; font-weight: 800; color: var(--text-1); white-space: nowrap; font-variant-numeric: tabular-nums; border: var(--border-w) solid var(--border-strong); padding: 2px 6px; background: var(--surface); box-shadow: 1px 1px 0 var(--border-strong); }
 
-.week-chart { display: flex; align-items: flex-end; gap: 2px; height: 32px; margin-left: auto; flex-shrink: 0; }
-.week-bar-wrap { display: flex; flex-direction: column; align-items: center; gap: 2px; height: 100%; justify-content: flex-end; }
-.week-bar { width: 8px; background: var(--text-1); border: 1px solid var(--border-strong); min-height: 4px; opacity: 1; transition: transform var(--dur-fast); }
-.week-bar-wrap:hover .week-bar { transform: scaleY(1.1); background: var(--accent); }
-.week-bar-label { font-size: 0.5rem; font-weight: 800; color: var(--text-1); text-transform: uppercase; }
+.week-chart { display: flex; align-items: flex-end; gap: 4px; height: 60px; padding: 8px 12px 10px; }
+.week-bar-wrap { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: 1; height: 100%; justify-content: flex-end; }
+.week-bar { width: 100%; background: var(--accent); border: 1px solid var(--border-strong); min-height: 4px; border-radius: 2px 2px 0 0; transition: all var(--dur-fast); }
+.week-bar-wrap:hover .week-bar { background: var(--text-1); transform: scaleY(1.05); }
+.week-bar-label { font-size: 0.55rem; font-weight: 800; color: var(--text-2); text-transform: uppercase; }
 
 .editor-body .todo-item { display: flex; align-items: flex-start; gap: 8px; padding: 2px 0; margin-bottom: 4px; }
 .editor-body .todo-check { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border: var(--border-w) solid var(--border-strong); cursor: pointer; flex-shrink: 0; margin-top: 4px; background: var(--bg); box-shadow: 1px 1px 0 var(--border-strong); }
@@ -84,3 +98,130 @@
 
 .settings-item-link { text-decoration: none; color: inherit; cursor: pointer; }
 .settings-item-link:hover { background: var(--surface-hover); }
+
+/* SaaS MODE - Features Overrides */
+[data-style="saas"] .filter-chip { border-radius: var(--radius-full); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+[data-style="saas"] .filter-chip:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.1); transform: translateY(-1px); }
+[data-style="saas"] .filter-chip:active { transform: var(--btn-transform); box-shadow: none; }
+[data-style="saas"] .filter-chip.active { box-shadow: 0 0 0 2px var(--accent), 0 2px 6px rgba(0,0,0,0.1); transform: none; }
+
+[data-style="saas"] .trash-card { border-radius: var(--radius-lg); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+[data-style="saas"] .trash-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); transform: translateY(-1px); }
+[data-style="saas"] .trash-info { border-radius: var(--radius-md); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+[data-style="saas"] .trash-header { border-bottom: 1px solid var(--border); }
+
+[data-style="saas"] .template-option { border-radius: var(--radius-md); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+[data-style="saas"] .template-option:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); transform: translateY(-1px); }
+[data-style="saas"] .template-icon { border-radius: var(--radius-md); }
+
+[data-style="saas"] .shortcut-row { border-bottom: 1px solid var(--border); }
+[data-style="saas"] .shortcut-keys kbd { border-radius: var(--radius-sm); box-shadow: none; }
+
+[data-style="saas"] .stats-card { border-radius: var(--radius-lg); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+[data-style="saas"] .stat-pill { border-radius: var(--radius-full); box-shadow: none; }
+
+[data-style="saas"] .editor-wordcount { border-radius: var(--radius-sm); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+
+[data-style="saas"] .week-bar { border-radius: 2px; }
+
+[data-style="saas"] .editor-body .todo-check { border-radius: var(--radius-sm); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+[data-style="saas"] .read-body .todo-check { border-radius: var(--radius-sm); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+
+[data-style="saas"] .version-item { border-radius: var(--radius-md); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+[data-style="saas"] .version-item:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); transform: translateY(-1px); }
+
+/* ============================================
+   RETRO GAZETTE MODE - Features Overrides
+   ============================================ */
+[data-style="retro-gazette"] .filter-chip { border-radius: var(--radius-full); box-shadow: 1px 1px 0px var(--border-strong); font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; }
+[data-style="retro-gazette"] .filter-chip:hover { box-shadow: 2px 2px 0px var(--border-strong); transform: translate(-1px, -1px); }
+[data-style="retro-gazette"] .filter-chip:active { transform: translate(1px, 1px); box-shadow: none; }
+[data-style="retro-gazette"] .filter-chip.active { box-shadow: 2px 2px 0px var(--accent); transform: translate(-1px, -1px); border-color: var(--accent); }
+
+[data-style="retro-gazette"] .trash-card { border-radius: var(--radius-md); border: 1px solid var(--border-strong); box-shadow: 2px 2px 0px var(--border-strong); }
+[data-style="retro-gazette"] .trash-card:hover { box-shadow: 3px 3px 0px var(--border-strong); transform: translate(-1px, -1px); }
+[data-style="retro-gazette"] .trash-info { border-radius: var(--radius-md); border: 1px solid var(--border-strong); box-shadow: 1px 1px 0px var(--border-strong); }
+[data-style="retro-gazette"] .trash-header { border-bottom: 1px solid var(--border-strong); }
+
+[data-style="retro-gazette"] .template-option { border-radius: var(--radius-md); border: 1px solid var(--border-strong); box-shadow: 2px 2px 0px var(--border-strong); }
+[data-style="retro-gazette"] .template-option:hover { box-shadow: 3px 3px 0px var(--border-strong); transform: translate(-1px, -1px); }
+[data-style="retro-gazette"] .template-icon { border-radius: var(--radius-sm); }
+
+[data-style="retro-gazette"] .shortcut-row { border-bottom: 1px solid var(--border); }
+[data-style="retro-gazette"] .shortcut-keys kbd { border-radius: var(--radius-sm); box-shadow: 1px 1px 0px var(--border-strong); font-weight: 900; }
+
+[data-style="retro-gazette"] .stats-card { border-radius: var(--radius-md); border: 1px solid var(--border-strong); box-shadow: 2px 2px 0px var(--border-strong); }
+
+[data-style="retro-gazette"] .editor-wordcount { border-radius: var(--radius-sm); box-shadow: 1px 1px 0px var(--border-strong); font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; }
+
+[data-style="retro-gazette"] .week-bar { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+
+[data-style="retro-gazette"] .editor-body .todo-check { border-radius: var(--radius-sm); box-shadow: 1px 1px 0px var(--border-strong); }
+[data-style="retro-gazette"] .read-body .todo-check { border-radius: var(--radius-sm); box-shadow: 1px 1px 0px var(--border-strong); }
+
+[data-style="retro-gazette"] .version-item { border-radius: var(--radius-md); border: 1px solid var(--border-strong); box-shadow: 2px 2px 0px var(--border-strong); }
+[data-style="retro-gazette"] .version-item:hover { box-shadow: 3px 3px 0px var(--border-strong); transform: translate(-1px, -1px); }
+
+/* ============================================
+   SKEUOMORPHISM MODE - Feature Overrides
+   ============================================ */
+[data-style="skeuomorphism"] .filter-chip { border-radius: var(--radius-full); box-shadow: var(--shadow-sm); }
+[data-style="skeuomorphism"] .filter-chip:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+[data-style="skeuomorphism"] .filter-chip:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+[data-style="skeuomorphism"] .filter-chip.active { box-shadow: var(--shadow-active), 0 0 0 1px var(--accent); }
+
+[data-style="skeuomorphism"] .trash-card { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); background: var(--surface); }
+[data-style="skeuomorphism"] .trash-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+[data-style="skeuomorphism"] .trash-info { border-radius: var(--radius-md); box-shadow: var(--shadow-sm); background: var(--surface); }
+[data-style="skeuomorphism"] .trash-header { border-bottom: 1px solid var(--border); }
+
+[data-style="skeuomorphism"] .template-option { border-radius: var(--radius-md); box-shadow: var(--shadow-sm); background: var(--surface); }
+[data-style="skeuomorphism"] .template-option:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+[data-style="skeuomorphism"] .template-icon { border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
+
+[data-style="skeuomorphism"] .shortcut-row { border-bottom: 1px solid var(--border); }
+[data-style="skeuomorphism"] .shortcut-keys kbd { border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); background: var(--surface); }
+
+[data-style="skeuomorphism"] .stats-card { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); background: var(--surface); }
+
+[data-style="skeuomorphism"] .editor-wordcount { border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); background: var(--surface); }
+
+[data-style="skeuomorphism"] .week-bar { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+
+[data-style="skeuomorphism"] .editor-body .todo-check { border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
+[data-style="skeuomorphism"] .read-body .todo-check { border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
+
+[data-style="skeuomorphism"] .version-item { border-radius: var(--radius-md); box-shadow: var(--shadow-sm); background: var(--surface); }
+[data-style="skeuomorphism"] .version-item:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+
+/* ============================================
+   NEUMORPHISM MODE - Feature Overrides
+   ============================================ */
+[data-style="neumorphism"] .filter-chip { border-radius: var(--radius-full); box-shadow: var(--shadow-sm); border: none; background: var(--bg); }
+[data-style="neumorphism"] .filter-chip:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+[data-style="neumorphism"] .filter-chip:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+[data-style="neumorphism"] .filter-chip.active { box-shadow: var(--shadow-active); color: var(--accent); }
+
+[data-style="neumorphism"] .trash-card { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: none; background: var(--bg); }
+[data-style="neumorphism"] .trash-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+[data-style="neumorphism"] .trash-info { border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border: none; background: var(--bg); }
+[data-style="neumorphism"] .trash-header { border-bottom: none; }
+
+[data-style="neumorphism"] .template-option { border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border: none; background: var(--bg); }
+[data-style="neumorphism"] .template-option:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+[data-style="neumorphism"] .template-icon { border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
+
+[data-style="neumorphism"] .shortcut-row { border-bottom: none; }
+[data-style="neumorphism"] .shortcut-keys kbd { border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); background: var(--bg); }
+
+[data-style="neumorphism"] .stats-card { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: none; background: var(--bg); }
+
+[data-style="neumorphism"] .editor-wordcount { border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); border: none; background: var(--bg); }
+
+[data-style="neumorphism"] .week-bar { border-radius: var(--radius-sm) var(--radius-sm) 0 0; }
+
+[data-style="neumorphism"] .editor-body .todo-check { border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
+[data-style="neumorphism"] .read-body .todo-check { border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
+
+[data-style="neumorphism"] .version-item { border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border: none; background: var(--bg); }
+[data-style="neumorphism"] .version-item:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }

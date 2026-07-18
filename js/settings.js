@@ -7,13 +7,26 @@ window.Notara.Settings = (() => {
   const KEY_ACCENT = 'settings_accent';
   const KEY_FONT   = 'settings_font';
   const KEY_FONT_SIZE = 'settings_font_size';
+  const KEY_STYLE  = 'settings_style';
 
   const THEMES  = ['dark', 'light', 'amoled'];
-  const ACCENTS = ['violet', 'teal', 'coral', 'amber', 'rose', 'lime'];
-  const ACCENT_COLORS = {
-    violet: '#7c6af7', teal: '#2dd4bf', coral: '#ff6b6b',
-    amber:  '#f5a623', rose: '#f472b6', lime:  '#84cc16',
-  };
+  const ACCENT_CATEGORIES = [
+    { name: 'Solid', colors: [
+      { id: 'red', hex: '#EF4444', label: 'Merah' }, { id: 'orange', hex: '#F97316', label: 'Jingga' }, { id: 'yellow', hex: '#EAB308', label: 'Kuning' },
+      { id: 'green', hex: '#22C55E', label: 'Hijau' }, { id: 'blue', hex: '#3B82F6', label: 'Biru' }, { id: 'indigo', hex: '#6366F1', label: 'Nila' }, { id: 'purple', hex: '#A855F7', label: 'Ungu' },
+    ]},
+    { name: 'Pastel', colors: [
+      { id: 'pastel-red', hex: '#FCA5A5', label: 'Permen' }, { id: 'pastel-orange', hex: '#FDBA74', label: 'Senja' }, { id: 'pastel-yellow', hex: '#FDE047', label: 'Mentari' },
+      { id: 'pastel-green', hex: '#86EFAC', label: 'Mint' }, { id: 'pastel-blue', hex: '#93C5FD', label: 'Langit' }, { id: 'pastel-indigo', hex: '#A5B4FC', label: 'Kristal' }, { id: 'pastel-purple', hex: '#C4B5FD', label: 'Lavender' },
+    ]},
+    { name: 'Deep', colors: [
+      { id: 'deep-red', hex: '#991B1B', label: 'Bara' }, { id: 'deep-orange', hex: '#9A3412', label: 'Tembaga' }, { id: 'deep-yellow', hex: '#854D0E', label: 'Emas' },
+      { id: 'deep-green', hex: '#166534', label: 'Hutan' }, { id: 'deep-blue', hex: '#1E40AF', label: 'Laut' }, { id: 'deep-indigo', hex: '#3730A3', label: 'Malam' }, { id: 'deep-purple', hex: '#6B21A8', label: 'Wine' },
+    ]},
+  ];
+  const ALL_ACCENTS = ACCENT_CATEGORIES.flatMap(c => c.colors);
+  const STYLES  = ['saas', 'neobrutalism', 'retro-gazette', 'skeuomorphism', 'neumorphism'];
+  const STYLE_LABELS = { saas: 'Modern SaaS', neobrutalism: 'Neobrutalism', 'retro-gazette': 'Retro Gazette', skeuomorphism: 'Skeuomorphism', neumorphism: 'Neumorphism' };
   const FONTS = [
     { id: 'default', label: 'Default (Sora / DM Sans)', display: "'Sora', sans-serif", body: "'DM Sans', sans-serif" },
     { id: 'inter', label: 'Inter', display: "'Inter', sans-serif", body: "'Inter', sans-serif" },
@@ -26,9 +39,10 @@ window.Notara.Settings = (() => {
   const FONT_SIZE_LABELS = { sm: 'Kecil (14px)', md: 'Sedang (16px)', lg: 'Besar (18px)', xl: 'Extra Besar (20px)' };
 
   function getTheme()  { return S.get(KEY_THEME,  'dark'); }
-  function getAccent() { return S.get(KEY_ACCENT, 'violet'); }
+  function getAccent() { return S.get(KEY_ACCENT, 'blue'); }
   function getFont()   { return S.get(KEY_FONT,   'default'); }
   function getFontSize() { return S.get(KEY_FONT_SIZE, 'md'); }
+  function getStyle()  { return S.get(KEY_STYLE,  'saas'); }
 
   function setTheme(theme) {
     if (!THEMES.includes(theme)) return;
@@ -39,7 +53,7 @@ window.Notara.Settings = (() => {
   }
 
   function setAccent(accent) {
-    if (!ACCENTS.includes(accent)) return;
+    if (!ALL_ACCENTS.find(a => a.id === accent)) return;
     S.set(KEY_ACCENT, accent);
     document.documentElement.setAttribute('data-accent', accent);
   }
@@ -58,6 +72,12 @@ window.Notara.Settings = (() => {
     document.documentElement.setAttribute('data-font-size', size);
   }
 
+  function setStyle(style) {
+    if (!STYLES.includes(style)) return;
+    S.set(KEY_STYLE, style);
+    document.documentElement.setAttribute('data-style', style);
+  }
+
   function cycleTheme() {
     const next = THEMES[(THEMES.indexOf(getTheme()) + 1) % THEMES.length];
     document.documentElement.classList.add('theme-switching');
@@ -71,6 +91,7 @@ window.Notara.Settings = (() => {
     setAccent(getAccent());
     setFont(getFont());
     setFontSize(getFontSize());
+    setStyle(getStyle());
   }
 
   /* Helper: notif permission badge */
@@ -113,6 +134,7 @@ window.Notara.Settings = (() => {
 
     const currentTheme  = getTheme();
     const currentAccent = getAccent();
+    const currentStyle  = getStyle();
     const noteCount     = await window.Notara.Notes.count();
     const user          = window.Notara.Auth.getUser();
     const name          = window.Notara.Auth.getName();
@@ -154,6 +176,22 @@ window.Notara.Settings = (() => {
           <div class="settings-card">
             <div class="settings-item">
               <div class="settings-item-left">
+                <span class="settings-item-label">Gaya Tampilan</span>
+                <span class="settings-item-sub">Pilih gaya desain aplikasi</span>
+              </div>
+              <div class="style-picker">
+                ${STYLES.map(s => `
+                  <div class="style-option ${s === currentStyle ? 'active' : ''}" data-style-pick="${s}">
+                    <div class="style-preview ${s}">
+                      <div class="style-preview-box"></div>
+                    </div>
+                    <span class="style-label">${STYLE_LABELS[s]}</span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+            <div class="settings-item">
+              <div class="settings-item-left">
                 <span class="settings-item-label">Tema</span>
                 <span class="settings-item-sub">Pilih tampilan aplikasi</span>
               </div>
@@ -171,13 +209,24 @@ window.Notara.Settings = (() => {
                 <span class="settings-item-label">Warna Aksen</span>
                 <span class="settings-item-sub">Sesuaikan warna aksen</span>
               </div>
-              <div class="accent-picker">
-                ${ACCENTS.map(a => `
-                  <div class="accent-dot ${a === currentAccent ? 'active' : ''}"
-                    data-accent-pick="${a}"
-                    style="background:${ACCENT_COLORS[a]}"
-                    title="${a}"></div>
-                `).join('')}
+              <div class="accent-dropdowns">
+              ${ACCENT_CATEGORIES.map(cat => {
+                const picked = cat.colors.find(a => a.id === currentAccent);
+                return `
+                <div class="dropdown-wrap" data-dropdown="accent-${cat.name}">
+                  <button class="dropdown-trigger" data-dropdown-toggle="accent-${cat.name}">
+                    <span class="dropdown-value">${picked ? `<span class="accent-dot-mini" style="background:${picked.hex}"></span> ${picked.label}` : `${cat.name}`}</span>
+                    <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
+                  </button>
+                  <div class="dropdown-menu" id="dropdown-accent-${cat.name}">
+                    ${cat.colors.map(a => `
+                      <div class="dropdown-item ${a.id === currentAccent ? 'active' : ''}" data-accent-pick="${a.id}">
+                        <span class="accent-dot-mini" style="background:${a.hex}"></span>
+                      </div>
+                    `).join('')}
+                  </div>
+                </div>`;
+              }).join('')}
               </div>
             </div>
             <div class="settings-item">
@@ -294,8 +343,8 @@ window.Notara.Settings = (() => {
           <div class="settings-card">
             <div class="settings-item" style="cursor:pointer" id="setting-install">
               <div class="settings-item-left">
-                <span class="settings-item-label">Download Aplikasi (APK)</span>
-                <span class="settings-item-sub">Dapatkan versi Android terbaru</span>
+                <span class="settings-item-label">Download Aplikasi (PWA)</span>
+                <span class="settings-item-sub">Install Notara sebagai aplikasi</span>
               </div>
               <span style="color:var(--accent);font-size:0.85rem">
                 <i class="fa-solid fa-download"></i>
@@ -331,9 +380,17 @@ window.Notara.Settings = (() => {
             <div class="settings-item">
               <div class="settings-item-left">
                 <span class="settings-item-label">Notara</span>
-                <span class="settings-item-sub">Versi 2.1.0 • PWA Notes App</span>
+                <span class="settings-item-sub">Versi ${window.Notara.APP_VERSION} &bull; PWA Notes App</span>
               </div>
-              <span style="font-size:1.5rem;color:var(--accent)">📝</span>
+              <img src="ikon-non-transparant.png" alt="" width="28" height="28" style="border-radius:10%">
+            </div>
+            <div class="divider" style="margin:0"></div>
+            <div class="settings-item" style="cursor:pointer" id="setting-check-update">
+              <div class="settings-item-left">
+                <span class="settings-item-label"><i class="fa-solid fa-arrows-rotate" style="color:var(--accent);margin-right:8px"></i>Periksa Update</span>
+                <span class="settings-item-sub">Cek apakah versi terbaru tersedia</span>
+              </div>
+              <i class="fa-solid fa-chevron-right" style="color:var(--text-3);font-size:0.8rem"></i>
             </div>
           </div>
         </div>
@@ -361,28 +418,24 @@ window.Notara.Settings = (() => {
             <a href="mailto:zadpropc@gmail.com" class="settings-item settings-item-link">
               <div class="settings-item-left">
                 <span class="settings-item-label"><i class="fa-solid fa-envelope" style="color:#ea4335;margin-right:8px"></i>Email</span>
-                <span class="settings-item-sub">zadpropc@gmail.com</span>
               </div>
               <i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--text-3);font-size:0.8rem"></i>
             </a>
             <a href="https://wa.me/6289527003290?text=Halo%20Dede%2C%20aku%20punya%20kritik%2Fsaran%20tentang%20aplikasi%20Notara%3A%20" target="_blank" rel="noopener" class="settings-item settings-item-link">
               <div class="settings-item-left">
                 <span class="settings-item-label"><i class="fa-brands fa-whatsapp" style="color:#25d366;margin-right:8px"></i>WhatsApp</span>
-                <span class="settings-item-sub">089527003290</span>
               </div>
               <i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--text-3);font-size:0.8rem"></i>
             </a>
             <a href="https://www.instagram.com/zadostrix/" target="_blank" rel="noopener" class="settings-item settings-item-link">
               <div class="settings-item-left">
                 <span class="settings-item-label"><i class="fa-brands fa-instagram" style="color:#e1306c;margin-right:8px"></i>Instagram</span>
-                <span class="settings-item-sub">@zadostrix</span>
               </div>
               <i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--text-3);font-size:0.8rem"></i>
             </a>
             <a href="https://www.tiktok.com/@zadostrix?is_from_webapp=1&sender_device=pc" target="_blank" rel="noopener" class="settings-item settings-item-link">
               <div class="settings-item-left">
                 <span class="settings-item-label"><i class="fa-brands fa-tiktok" style="color:var(--text-1);margin-right:8px"></i>TikTok</span>
-                <span class="settings-item-sub">@zadostrix</span>
               </div>
               <i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--text-3);font-size:0.8rem"></i>
             </a>
@@ -403,11 +456,32 @@ window.Notara.Settings = (() => {
       });
     });
 
-    document.querySelectorAll('[data-accent-pick]').forEach(el => {
+    document.querySelectorAll('[data-style-pick]').forEach(el => {
       el.addEventListener('click', () => {
-        document.querySelectorAll('[data-accent-pick]').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('[data-style-pick]').forEach(x => x.classList.remove('active'));
         el.classList.add('active');
+        setStyle(el.dataset.stylePick);
+      });
+    });
+
+    document.querySelectorAll('[data-accent-pick]').forEach(el => {
+      el.addEventListener('click', function() {
         setAccent(el.dataset.accentPick);
+        var accentObj = ALL_ACCENTS.find(a => a.id === el.dataset.accentPick);
+        ACCENT_CATEGORIES.forEach(cat => {
+          var catWrap = document.querySelector(`[data-dropdown="accent-${cat.name}"]`);
+          if (!catWrap) return;
+          var picked = cat.colors.find(a => a.id === el.dataset.accentPick);
+          var val = catWrap.querySelector('.dropdown-value');
+          if (picked) {
+            val.innerHTML = `<span class="accent-dot-mini" style="background:${picked.hex}"></span> ${picked.label}`;
+          } else {
+            val.textContent = cat.name;
+          }
+          catWrap.querySelectorAll('.dropdown-item').forEach(x => x.classList.remove('active'));
+        });
+        el.classList.add('active');
+        _closeAllDropdowns();
       });
     });
 
@@ -477,7 +551,17 @@ window.Notara.Settings = (() => {
     });
 
     document.getElementById('setting-install')?.addEventListener('click', () => {
-      window.open('https://github.com/DedePark/NOTARA/releases/latest/download/Notara.apk', '_blank');
+      window.Notara.UI.promptInstall();
+    });
+
+    document.getElementById('setting-check-update')?.addEventListener('click', async () => {
+      const btn = document.getElementById('setting-check-update');
+      const label = btn?.querySelector('.settings-item-label');
+      const sub = btn?.querySelector('.settings-item-sub');
+      if (label) label.innerHTML = '<i class="fa-solid fa-spinner fa-spin" style="color:var(--accent);margin-right:8px"></i>Memeriksa...';
+      if (sub) sub.textContent = 'Sedang menghubungi server...';
+      await window.Notara.UpdateChecker.checkForUpdate(false);
+      renderPage();
     });
 
     document.getElementById('setting-logout')?.addEventListener('click', async () => {
@@ -494,26 +578,93 @@ window.Notara.Settings = (() => {
     });
 
     document.getElementById('setting-clear')?.addEventListener('click', async () => {
-      const ok = await window.Notara.UI.confirm({
-        title: 'Hapus Semua Catatan',
-        message: 'Semua catatan akan dihapus permanen dari server. Yakin?',
-        okLabel: '<i class="fa-solid fa-trash"></i> Hapus Semua',
-        okClass: 'btn-primary',
+      const m1 = window.Notara.UI.modal({
+        title: '<i class="fa-solid fa-triangle-exclamation" style="color:var(--label-hard)"></i> Hapus Semua Catatan',
+        body: `
+          <div style="color:var(--text-2);line-height:1.7;font-size:0.9rem">
+            <p style="font-weight:800;color:var(--label-hard);margin-bottom:8px">Tindakan ini tidak dapat dibatalkan!</p>
+            <p>Semua catatan kamu akan dihapus <b>permanen</b> dari server. Berikut yang akan terjadi:</p>
+            <ul style="margin:8px 0 8px 16px;padding:0;color:var(--text-1)">
+              <li>Semua catatan akan dihapus permanen</li>
+              <li>Catatan yang ada di Sampah juga akan terhapus</li>
+              <li>Tag yang tidak dipakai catatan apapun akan tersisa</li>
+              <li>Pengingat (reminder) pada catatan akan berhenti</li>
+              <li>Riwayat versi catatan akan hilang</li>
+            </ul>
+            <p style="margin-top:8px">Kamu bisa membackup catatan terlebih dahulu dari menu <b>Eksport</b> sebelum melanjutkan.</p>
+          </div>
+        `,
+        footer: `
+          <button class="btn-ghost" id="modal-cancel">Batal</button>
+          <button class="btn-primary" id="modal-ok" style="margin-left:8px;background:var(--label-hard)"><i class="fa-solid fa-arrow-right"></i> Lanjutkan</button>
+        `,
       });
-      if (ok) {
-        try {
-          const notes = await window.Notara.Notes.getAll();
-          await Promise.all(notes.map(n => window.Notara.Notes.remove(n.id)));
-          window.Notara.UI.toast('Semua catatan dihapus', 'info');
-          window.Notara.UI.updateStorageIndicator();
-          renderPage();
-        } catch (err) {
-          console.error('[Notara] Hapus semua gagal:', err);
-          window.Notara.UI.toast('Gagal menghapus: ' + (err.message || 'Cek izin Supabase RLS'), 'error');
-        }
-      }
+      document.getElementById('modal-cancel').onclick = () => m1.close();
+      document.getElementById('modal-ok').onclick = () => {
+        m1.close();
+        _showDeleteAllConfirm();
+      };
     });
   }
 
-  return { init, getTheme, getAccent, getFont, getFontSize, setTheme, setAccent, setFont, setFontSize, cycleTheme, renderPage };
+  async function _showDeleteAllConfirm() {
+    const m2 = window.Notara.UI.modal({
+      title: '<i class="fa-solid fa-lock" style="color:var(--label-hard)"></i> Konfirmasi Penghapusan',
+      body: `
+        <div style="color:var(--text-2);line-height:1.6;font-size:0.9rem">
+          <p style="margin-bottom:12px">Ketik <b style="color:var(--label-hard)">HAPUS</b> untuk melanjutkan penghapusan:</p>
+          <div style="margin-bottom:12px">
+            <input type="text" id="delete-confirm-text" class="new-post-textarea" style="min-height:auto;resize:none;font-weight:800;letter-spacing:0.05em" placeholder="Ketik HAPUS di sini" autocomplete="off" spellcheck="false">
+          </div>
+          <label style="display:flex;align-items:flex-start;gap:8px;cursor:pointer;padding:10px;background:var(--bg);border:var(--border-w) solid var(--border-strong)">
+            <input type="checkbox" id="delete-confirm-check" style="margin-top:3px;accent-color:var(--label-hard)">
+            <span style="font-weight:700;color:var(--text-1);font-size:0.85rem">Saya sadar apa yang saya lakukan</span>
+          </label>
+        </div>
+      `,
+      footer: `
+        <button class="btn-ghost" id="modal-cancel">Batal</button>
+        <button class="btn-primary" id="modal-ok" disabled style="margin-left:8px;background:var(--label-hard)"><i class="fa-solid fa-trash"></i> Hapus Semua</button>
+      `,
+    });
+
+    const textInput  = document.getElementById('delete-confirm-text');
+    const checkEl    = document.getElementById('delete-confirm-check');
+    const okBtn      = document.getElementById('modal-ok');
+    const cancelBtn  = document.getElementById('modal-cancel');
+
+    function _validate() {
+      okBtn.disabled = !(textInput.value.trim().toUpperCase() === 'HAPUS' && checkEl.checked);
+    }
+    textInput.addEventListener('input', _validate);
+    checkEl.addEventListener('change', _validate);
+
+    cancelBtn.onclick = () => m2.close();
+    okBtn.onclick = async () => {
+      if (textInput.value.trim().toUpperCase() !== 'HAPUS' || !checkEl.checked) return;
+
+      okBtn.disabled = true;
+      okBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menghapus...';
+
+      try {
+        const notes = await window.Notara.Notes.getAll();
+        const trash = await window.Notara.Notes.getTrash();
+        await Promise.all([
+          ...notes.map(n => window.Notara.Notes.remove(n.id)),
+          ...trash.map(n => window.Notara.Notes.permanentDelete(n.id)),
+        ]);
+        m2.close();
+        window.Notara.UI.toast('Semua catatan berhasil dihapus', 'success');
+        window.Notara.UI.updateStorageIndicator();
+        renderPage();
+      } catch (err) {
+        console.error('[Notara] Hapus semua gagal:', err);
+        window.Notara.UI.toast(err.message || 'Gagal menghapus', 'error');
+        okBtn.disabled = false;
+        okBtn.innerHTML = '<i class="fa-solid fa-trash"></i> Hapus Semua';
+      }
+    };
+  }
+
+  return { init, getTheme, getAccent, getFont, getFontSize, getStyle, setTheme, setAccent, setFont, setFontSize, setStyle, cycleTheme, renderPage };
 })();

@@ -15,9 +15,11 @@ window.Notara = window.Notara || {};
   /* --- NOTE GROUPS --- */
   const db = () => window.Notara.db;
   async function _fetchGroups() {
+    const userId = Au.getUser()?.id;
     const { data, error } = await db()
       .from('note_groups')
       .select('*')
+      .eq('user_id', userId)
       .order('created_at', { ascending: true });
     if (error) { console.warn('[Notara] fetchGroups error:', error.message); return []; }
     return data || [];
@@ -55,12 +57,30 @@ window.Notara = window.Notara || {};
   let _multiSelect = false;
   let _selectedIds = new Set();
   let _homeCache = null;
+  let _activityMap = {};
+
+  function _resetAppState() {
+    _homeCache = null;
+    _activityMap = {};
+    _multiSelect = false;
+    _selectedIds.clear();
+    N.resetCache();
+  }
 
   function _toggleMultiSelect() {
     _multiSelect = !_multiSelect;
     _selectedIds.clear();
     document.getElementById('app')?.setAttribute('data-multiselect', _multiSelect ? 'true' : 'false');
+    _updateTopbarMultiSelect();
     _renderHome();
+  }
+
+  function _exitMultiSelect() {
+    if (!_multiSelect) return;
+    _multiSelect = false;
+    _selectedIds.clear();
+    document.getElementById('app')?.setAttribute('data-multiselect', 'false');
+    _updateTopbarMultiSelect();
   }
 
   function _toggleNoteSelect(id) {
@@ -69,13 +89,45 @@ window.Notara = window.Notara || {};
     _refreshSelectionUI();
   }
 
+  function _updateTopbarMultiSelect() {
+    const topbar = document.getElementById('topbar');
+    const normalItems = topbar?.querySelectorAll('.topbar-normal-item');
+    const msBar = document.getElementById('topbar-ms-bar');
+    if (!topbar || !msBar) return;
+    if (_multiSelect) {
+      normalItems.forEach(el => el.style.display = 'none');
+      msBar.style.display = 'flex';
+      _refreshTopbarMsBar();
+    } else {
+      normalItems.forEach(el => el.style.display = '');
+      msBar.style.display = 'none';
+    }
+  }
+
+  function _refreshTopbarMsBar() {
+    const msBar = document.getElementById('topbar-ms-bar');
+    if (!msBar) return;
+    const count = _selectedIds.size;
+    const existingGroups = _homeCache?.groups || [];
+    const hasGroups = existingGroups.length > 0;
+    msBar.innerHTML = `
+      <button class="icon-btn topbar-ms-cancel" id="ms-cancel-btn" title="Batal pilih"><i class="fa-solid fa-arrow-left"></i></button>
+      <span class="topbar-ms-count">${count} dipilih</span>
+      <div class="topbar-ms-actions">
+        ${count >= 1 ? `
+          <button class="btn-primary topbar-ms-action" id="ms-group-btn"><i class="fa-solid fa-layer-group"></i> Grup Baru</button>
+          ${hasGroups ? `<button class="btn-ghost topbar-ms-action" id="ms-addto-btn"><i class="fa-solid fa-plus"></i> Masukkan ke Grup</button>` : ''}
+        ` : ''}
+      </div>
+    `;
+    document.getElementById('ms-cancel-btn')?.addEventListener('click', _toggleMultiSelect);
+    document.getElementById('ms-group-btn')?.addEventListener('click', () => _createGroup());
+    document.getElementById('ms-addto-btn')?.addEventListener('click', () => _showAddToGroupPicker(existingGroups));
+  }
+
   async function _refreshSelectionUI() {
     const count = _selectedIds.size;
-    const bar   = document.getElementById('multi-select-bar');
-    if (!bar) return;
-    const existingGroups = _homeCache?.groups || [];
-    bar.innerHTML = _buildMultiBar(count, existingGroups);
-    _bindMultiBar(existingGroups);
+    _refreshTopbarMsBar();
     document.querySelectorAll('.note-card').forEach(card => {
       const id = card.dataset.id;
       card.classList.toggle('ms-selected', _selectedIds.has(id));
@@ -85,34 +137,8 @@ window.Notara = window.Notara || {};
     });
   }
 
-  function _buildMultiBar(count, existingGroups = []) {
-    const hasGroups = existingGroups.length > 0;
-    return `
-      <span class="ms-count">${count} dipilih</span>
-      ${count >= 2 ? `
-        <button class="btn-primary" id="ms-group-btn" style="font-size:0.8rem;padding:0.4rem 0.9rem">
-          <i class="fa-solid fa-layer-group"></i> Buat Grup
-        </button>
-        ${hasGroups ? `
-          <button class="btn-ghost" id="ms-addto-btn" style="font-size:0.8rem;padding:0.4rem 0.9rem">
-            <i class="fa-solid fa-plus"></i> Masukkan ke Grup
-          </button>
-        ` : ''}
-      ` : ''}
-      <button class="btn-ghost" id="ms-cancel-btn" style="font-size:0.8rem;padding:0.4rem 0.9rem">
-        Batal
-      </button>
-    `;
-  }
-
-  function _bindMultiBar(existingGroups = []) {
-    document.getElementById('ms-group-btn')?.addEventListener('click', () => _createGroup());
-    document.getElementById('ms-addto-btn')?.addEventListener('click', () => _showAddToGroupPicker(existingGroups));
-    document.getElementById('ms-cancel-btn')?.addEventListener('click', _toggleMultiSelect);
-  }
-
   function _createGroup() {
-    if (_selectedIds.size < 2) { UI.toast('Pilih minimal 2 catatan', 'warning'); return; }
+    if (_selectedIds.size < 1) { UI.toast('Pilih minimal 1 catatan', 'warning'); return; }
     UI.modal({
       title: '<i class="fa-solid fa-layer-group"></i> Buat Grup',
       body: `
@@ -146,8 +172,8 @@ window.Notara = window.Notara || {};
         try {
           await _createGroupInDb(name, [..._selectedIds]);
           document.getElementById('modal-close')?.click();
-          _multiSelect = false;
-          _selectedIds.clear();
+          _homeCache = null;
+          _exitMultiSelect();
           UI.toast(`Grup "${name}" dibuat!`, 'success');
           _renderHome();
         } catch (err) {
@@ -197,8 +223,8 @@ window.Notara = window.Notara || {};
             const merged = [...new Set([...targetGroup.note_ids, ..._selectedIds])];
             await _updateGroupInDb(gid, { note_ids: merged });
             document.getElementById('modal-close')?.click();
-            _multiSelect = false;
-            _selectedIds.clear();
+            _homeCache = null;
+            _exitMultiSelect();
             UI.toast(`${merged.length - targetGroup.note_ids.length} catatan ditambahkan ke "${targetGroup.name}"!`, 'success');
             _renderHome();
           } catch (err) {
@@ -213,7 +239,7 @@ window.Notara = window.Notara || {};
   async function _deleteGroup(gId) {
     try {
       await _deleteGroupInDb(gId);
-      if (_homeCache?.groups) _homeCache.groups = _homeCache.groups.filter(g => g.id !== gId);
+      _homeCache = null;
       _renderHome();
     } catch (err) {
       UI.toast('Gagal hapus grup: ' + err.message, 'error');
@@ -226,8 +252,6 @@ window.Notara = window.Notara || {};
       const groupCard = document.querySelector(`.note-group-card[data-gid="${gId}"]`);
       if (groupCard) {
         const body       = groupCard.querySelector('.note-group-body');
-        const toggleBtn  = groupCard.querySelector(`.group-toggle-btn[data-gid="${gId}"]`);
-        const icon       = toggleBtn?.querySelector('i');
         if (newCollapsed) {
           body?.remove();
         } else {
@@ -237,18 +261,16 @@ window.Notara = window.Notara || {};
           const group    = groups.find(g => g.id === gId);
           if (group && !body) {
             const memberNotes = allNotes.filter(n => group.note_ids.includes(n.id));
+            const groupLayout = window.Notara.Storage.get('group_layout_' + gId, 'grid');
             const bodyEl = document.createElement('div');
             bodyEl.className = 'note-group-body';
-            bodyEl.innerHTML = `<div class="notes-grid" style="margin:0">
+            bodyEl.innerHTML = `<div class="notes-grid ${groupLayout === 'list' ? 'notes-list' : ''}" style="margin:0">
               ${memberNotes.map(n => _buildGroupNoteCard(n, tagsMap[n.id] || [], gId)).join('')}
             </div>`;
             groupCard.appendChild(bodyEl);
             _bindGroupCardEvents(bodyEl, groups);
           }
         }
-        if (toggleBtn) toggleBtn.dataset.collapsed = String(newCollapsed);
-        if (icon) icon.className = `fa-solid fa-chevron-${newCollapsed ? 'down' : 'up'}`;
-        if (toggleBtn) toggleBtn.title = newCollapsed ? 'Buka' : 'Tutup';
       }
       await _updateGroupInDb(gId, { collapsed: newCollapsed });
       if (_homeCache?.groups) {
@@ -271,6 +293,7 @@ window.Notara = window.Notara || {};
       } else {
         await _updateGroupInDb(gId, { note_ids: newIds });
       }
+      _homeCache = null;
       _renderHome();
     } catch (err) {
       UI.toast('Gagal: ' + err.message, 'error');
@@ -283,8 +306,6 @@ window.Notara = window.Notara || {};
         if (e.target.closest('.group-remove-note-btn')) return;
         R.go('read/' + card.dataset.id);
       });
-      card.addEventListener('mouseenter', () => { card.querySelector('.group-remove-note-btn')?.style.setProperty('opacity', '1'); });
-      card.addEventListener('mouseleave', () => { card.querySelector('.group-remove-note-btn')?.style.setProperty('opacity', '0'); });
     });
     container.querySelectorAll('.group-remove-note-btn').forEach(btn => {
       btn.addEventListener('click', async e => {
@@ -300,11 +321,28 @@ window.Notara = window.Notara || {};
         if (ok) await _removeNoteFromGroup(gId, noteId, groups);
       });
     });
-    container.querySelectorAll('.group-toggle-btn').forEach(btn => {
+    container.querySelectorAll('.group-layout-btn').forEach(btn => {
       btn.addEventListener('click', e => {
         e.stopPropagation();
-        const gId       = btn.dataset.gid;
-        const collapsed = btn.dataset.collapsed === 'true';
+        const gId = btn.dataset.gid;
+        const currentLayout = btn.dataset.layout;
+        const newLayout = currentLayout === 'grid' ? 'list' : 'grid';
+        window.Notara.Storage.set('group_layout_' + gId, newLayout);
+        btn.dataset.layout = newLayout;
+        const icon = btn.querySelector('i');
+        if (icon) icon.className = `fa-solid fa-${newLayout === 'grid' ? 'table-cells-large' : 'list'}`;
+        const groupCard = document.querySelector(`.note-group-card[data-gid="${gId}"]`);
+        const grid = groupCard?.querySelector('.notes-grid');
+        if (grid) grid.classList.toggle('notes-list', newLayout === 'list');
+      });
+    });
+    container.querySelectorAll('.note-group-header').forEach(header => {
+      header.addEventListener('click', e => {
+        if (e.target.closest('.group-edit-btn') || e.target.closest('.group-delete-btn') || e.target.closest('.group-layout-btn')) return;
+        const gId       = header.dataset.gid;
+        const groupCard = header.closest('.note-group-card');
+        const body      = groupCard?.querySelector('.note-group-body');
+        const collapsed = !body;
         _toggleGroupCollapse(gId, collapsed);
       });
     });
@@ -315,6 +353,61 @@ window.Notara = window.Notara || {};
         if (ok) _deleteGroup(btn.dataset.gid);
       });
     });
+    container.querySelectorAll('.group-edit-btn').forEach(btn => {
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        _editGroupName(btn.dataset.gid, btn.dataset.name);
+      });
+    });
+  }
+
+  function _editGroupName(gId, currentName) {
+    UI.modal({
+      title: '<i class="fa-solid fa-pen"></i> Edit Nama Grup',
+      body: `
+        <div class="auth-field">
+          <label class="auth-label">Nama Grup</label>
+          <div class="auth-input-wrap">
+            <i class="fa-solid fa-layer-group auth-input-icon"></i>
+            <input type="text" class="auth-input" id="edit-group-name-input"
+              placeholder="Nama grup..." maxlength="40" value="${_esc(currentName)}">
+          </div>
+        </div>
+        <div class="auth-error" id="edit-group-name-error"></div>
+      `,
+      footer: `
+        <button class="btn-ghost" id="edit-group-cancel">Batal</button>
+        <button class="btn-primary" id="edit-group-save" style="margin-left:8px">
+          <i class="fa-solid fa-check"></i> Simpan
+        </button>
+      `,
+    });
+    setTimeout(() => {
+      const input = document.getElementById('edit-group-name-input');
+      input?.focus();
+      input?.select();
+      document.getElementById('edit-group-cancel')?.addEventListener('click', () => document.getElementById('modal-close')?.click());
+      document.getElementById('edit-group-save')?.addEventListener('click', async () => {
+        const name = input?.value.trim();
+        if (!name) { document.getElementById('edit-group-name-error').textContent = 'Nama grup wajib diisi.'; return; }
+        if (name === currentName) { document.getElementById('modal-close')?.click(); return; }
+        const btn = document.getElementById('edit-group-save');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
+        try {
+          await _updateGroupInDb(gId, { name });
+          _homeCache = null;
+          document.getElementById('modal-close')?.click();
+          UI.toast('Nama grup diperbarui!', 'success');
+          _renderHome();
+        } catch (err) {
+          document.getElementById('edit-group-name-error').textContent = 'Gagal menyimpan: ' + err.message;
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fa-solid fa-check"></i> Simpan';
+        }
+      });
+      input?.addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('edit-group-save')?.click(); });
+    }, 60);
   }
 
   async function _refreshCurrentView(noteId) {
@@ -368,6 +461,7 @@ window.Notara = window.Notara || {};
     const memberNotes = notes.filter(n => group.note_ids.includes(n.id));
     if (!memberNotes.length) return '';
     const collapsed  = group.collapsed;
+    const groupLayout = window.Notara.Storage.get('group_layout_' + group.id, 'grid');
     return `
       <div class="note-group-card" data-gid="${group.id}">
         <div class="note-group-header" data-gid="${group.id}">
@@ -375,17 +469,20 @@ window.Notara = window.Notara || {};
           <span class="note-group-name">${_esc(group.name)}</span>
           <span class="note-group-count">${memberNotes.length} catatan</span>
           <div class="note-group-actions">
+            <button class="icon-btn group-edit-btn" data-gid="${group.id}" data-name="${_esc(group.name)}" title="Edit nama grup" style="width:28px;height:28px;font-size:0.75rem">
+              <i class="fa-solid fa-pen"></i>
+            </button>
+            <button class="icon-btn group-layout-btn" data-gid="${group.id}" data-layout="${groupLayout}" title="Ganti tampilan" style="width:28px;height:28px;font-size:0.75rem">
+              <i class="fa-solid fa-${groupLayout === 'grid' ? 'table-cells-large' : 'list'}"></i>
+            </button>
             <button class="icon-btn group-delete-btn" data-gid="${group.id}" title="Hapus grup" style="width:28px;height:28px;font-size:0.75rem">
               <i class="fa-solid fa-xmark"></i>
-            </button>
-            <button class="icon-btn group-toggle-btn" data-gid="${group.id}" data-collapsed="${collapsed}" title="${collapsed ? 'Buka' : 'Tutup'}" style="width:28px;height:28px;font-size:0.75rem">
-              <i class="fa-solid fa-chevron-${collapsed ? 'down' : 'up'}"></i>
             </button>
           </div>
         </div>
         ${!collapsed ? `
           <div class="note-group-body">
-            <div class="notes-grid" style="margin:0">
+            <div class="notes-grid ${groupLayout === 'list' ? 'notes-list' : ''}" style="margin:0">
               ${memberNotes.map(n => _buildGroupNoteCard(n, tagsMap[n.id] || [], group.id)).join('')}
             </div>
           </div>
@@ -403,12 +500,7 @@ window.Notara = window.Notara || {};
         ).join('')}</div>`
       : '';
     return `
-      <div class="note-card ${note.pinned ? 'pinned' : ''}" data-id="${note.id}" data-gid="${gId}" style="position:relative">
-        <button class="icon-btn group-remove-note-btn" data-id="${note.id}" data-gid="${gId}"
-          title="Keluarkan dari grup"
-          style="position:absolute;top:6px;right:6px;width:22px;height:22px;font-size:0.6rem;z-index:2;opacity:0;transition:opacity 0.15s;color:var(--text-3)">
-          <i class="fa-solid fa-xmark"></i>
-        </button>
+      <div class="note-card ${note.pinned ? 'pinned' : ''}" data-id="${note.id}" data-gid="${gId}">
         <div class="card-accent-bar ${note.label}"></div>
         <div class="card-header">
           <div class="card-title">${_esc(note.title)}</div>
@@ -420,6 +512,10 @@ window.Notara = window.Notara || {};
         <div class="card-footer">
           <span class="card-date">${UI.formatDate(note.updatedAt)}</span>
           ${note.favorite ? '<i class="fa-solid fa-star" style="color:#f5a623;font-size:0.75rem"></i>' : ''}
+          <button class="group-remove-note-btn btn-ghost" data-id="${note.id}" data-gid="${gId}"
+            title="Keluarkan dari grup">
+            Keluar
+          </button>
         </div>
       </div>
     `;
@@ -452,24 +548,24 @@ window.Notara = window.Notara || {};
     for (let i = 0; i < 365; i++) {
       const d = new Date(today);
       d.setDate(today.getDate() - i);
-      const key   = `notara_activity_${d.toISOString().slice(0, 10)}`;
-      const words = parseInt(localStorage.getItem(key) || '0', 10);
+      const iso   = d.toISOString().slice(0, 10);
+      const words = _activityMap[iso] || 0;
       if (words > 0) streak++;
       else if (i > 0) break;
     }
     return streak;
   }
   function _getTodayWords() {
-    const key = `notara_activity_${new Date().toISOString().slice(0, 10)}`;
-    return parseInt(localStorage.getItem(key) || '0', 10);
+    const key = new Date().toISOString().slice(0, 10);
+    return _activityMap[key] || 0;
   }
   function _getWeekActivity() {
     const days = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const key   = `notara_activity_${d.toISOString().slice(0, 10)}`;
-      const words = parseInt(localStorage.getItem(key) || '0', 10);
+      const iso   = d.toISOString().slice(0, 10);
+      const words = _activityMap[iso] || 0;
       const label = d.toLocaleDateString('id-ID', { weekday: 'short' });
       days.push({ label, words });
     }
@@ -482,14 +578,6 @@ window.Notara = window.Notara || {};
     const today = new Date();
     const startDay = new Date(today);
     startDay.setDate(today.getDate() - (WEEKS * 7) + 1);
-    const data = {};
-    for (let i = 0; i < WEEKS * 7; i++) {
-      const d = new Date(startDay);
-      d.setDate(startDay.getDate() + i);
-      const iso   = d.toISOString().slice(0, 10);
-      const words = parseInt(localStorage.getItem(`notara_activity_${iso}`) || '0', 10);
-      data[iso] = words;
-    }
     const weeksHtml = [];
     for (let w = 0; w < WEEKS; w++) {
       const cells = [];
@@ -498,7 +586,7 @@ window.Notara = window.Notara || {};
         const date   = new Date(startDay);
         date.setDate(startDay.getDate() + dayIdx);
         const iso    = date.toISOString().slice(0, 10);
-        const words  = data[iso] || 0;
+        const words  = _activityMap[iso] || 0;
         let lvl = 0;
         if (words > 0)   lvl = 1;
         if (words > 100) lvl = 2;
@@ -534,12 +622,12 @@ window.Notara = window.Notara || {};
     const baseItems = [
       { icon: '<i class="fa-solid fa-pen-to-square"></i>', label: 'Edit', action: 'edit', handler: id => R.go('edit/' + id) },
       ...(!inReadMode ? [{ icon: '<i class="fa-solid fa-eye"></i>', label: 'Baca', action: 'read', handler: id => R.go('read/' + id) }] : []),
-      { icon: note.pinned ? '<i class="fa-solid fa-thumbtack" style="rotate:45deg"></i>' : '<i class="fa-solid fa-thumbtack"></i>', label: note.pinned ? 'Lepas Pin' : 'Pin', action: 'pin', handler: async id => { await N.pin(id); UI.toast(note.pinned ? 'Pin dilepas' : 'Catatan di-pin!', 'info'); _refreshCurrentView(id); } },
-      { icon: note.favorite ? '<i class="fa-solid fa-star" style="color:#f5a623"></i>' : '<i class="fa-regular fa-star"></i>', label: note.favorite ? 'Hapus Favorit' : 'Favorit', action: 'fav', handler: async id => { await N.favorite(id); UI.toast(note.favorite ? 'Favorit dihapus' : 'Ditambahkan ke favorit!', 'info'); _refreshCurrentView(id); } },
+      { icon: note.pinned ? '<i class="fa-solid fa-thumbtack" style="rotate:45deg"></i>' : '<i class="fa-solid fa-thumbtack"></i>', label: note.pinned ? 'Lepas Pin' : 'Pin', action: 'pin', handler: async id => { try { await N.pin(id); UI.toast(note.pinned ? 'Pin dilepas' : 'Catatan di-pin!', 'info'); _refreshCurrentView(id); } catch(e) { UI.toast('Gagal: ' + e.message, 'error'); } } },
+      { icon: note.favorite ? '<i class="fa-solid fa-star" style="color:#f5a623"></i>' : '<i class="fa-regular fa-star"></i>', label: note.favorite ? 'Hapus Favorit' : 'Favorit', action: 'fav', handler: async id => { try { await N.favorite(id); UI.toast(note.favorite ? 'Favorit dihapus' : 'Ditambahkan ke favorit!', 'info'); _refreshCurrentView(id); } catch(e) { UI.toast('Gagal: ' + e.message, 'error'); } } },
       { icon: '<i class="fa-solid fa-tag"></i>', label: 'Ubah Label', action: 'label', handler: id => _showLabelPicker(id) },
       { icon: '<i class="fa-solid fa-tags"></i>', label: 'Kelola Tag', action: 'tags', handler: id => _showTagManager(id) },
-      { icon: '<i class="fa-solid fa-copy"></i>', label: 'Duplikat', action: 'dup', handler: async id => { await N.duplicate(id); UI.toast('Catatan diduplikat', 'success'); if (!inReadMode) _renderHome(); } },
-      { icon: '<i class="fa-solid fa-share-nodes"></i>', label: 'Bagikan', action: 'share', handler: id => N.shareNote(id) },
+      { icon: '<i class="fa-solid fa-copy"></i>', label: 'Duplikat', action: 'dup', handler: async id => { try { await N.duplicate(id); UI.toast('Catatan diduplikat', 'success'); R.go('home'); } catch(e) { UI.toast('Gagal duplikat: ' + e.message, 'error'); } } },
+      { icon: '<i class="fa-solid fa-share-nodes"></i>', label: 'Bagikan', action: 'share', handler: async id => { try { await N.shareNote(id); } catch(e) { UI.toast('Gagal share: ' + e.message, 'error'); } } },
       { icon: '<i class="fa-solid fa-file-lines"></i>', label: 'Export TXT', action: 'txt', handler: id => N.exportTxt(id) },
       { icon: '<i class="fa-solid fa-file-pdf"></i>', label: 'Export PDF', action: 'pdf', handler: id => N.exportPdf(id) },
       { icon: '<i class="fa-solid fa-trash"></i>', label: 'Pindah ke Sampah', action: 'del', danger: true, handler: id => _deleteNote(id) },
@@ -551,8 +639,12 @@ window.Notara = window.Notara || {};
     const note = await N.getById(id);
     const ok   = await UI.confirm({ title: 'Pindah ke Sampah', message: `"<strong>${_esc(note?.title || 'catatan')}</strong>" akan dipindahkan ke Sampah. Bisa dipulihkan.`, okLabel: '<i class="fa-solid fa-trash"></i> Pindah ke Sampah', okClass: 'btn-primary' });
     if (ok) {
-      try { await N.remove(id); UI.toast('Dipindahkan ke Sampah', 'info'); if (window.location.hash === '#home') { _renderHome(); } else { R.go('home'); } }
-      catch (err) { UI.toast('Gagal: ' + (err.message || 'Cek izin Supabase RLS'), 'error'); }
+      try {
+        await N.remove(id);
+        UI.toast('Dipindahkan ke Sampah', 'info');
+        _restoreTopbarFromReader();
+        R.go('home');
+      } catch (err) { UI.toast('Gagal: ' + (err.message || 'Cek izin Supabase RLS'), 'error'); }
     }
   }
 
@@ -611,13 +703,288 @@ window.Notara = window.Notara || {};
     UI.setTitle('Beranda');
     UI.setActiveNav('home');
     if (_homeCache) { _renderHomeContent(main, _homeCache); } else { main.innerHTML = `<div class="page-loading"><div class="loader-ring"></div></div>`; }
-    const [allNotes, groups] = await Promise.all([N.getAll(), _fetchGroups()]);
-    const priority = await N.getPriorityNotes();
-    const allIds   = allNotes.map(n => n.id);
-    const tagsMap  = await Tg.getTagsForNotes(allIds).catch(() => ({}));
-    _homeCache = { allNotes, priority, groups, tagsMap };
-    _renderHomeContent(main, _homeCache);
+    try {
+      const [allNotes, groups] = await Promise.all([N.getAll(), _fetchGroups()]);
+      const priority = await N.getPriorityNotes();
+      const allIds   = allNotes.map(n => n.id);
+      const tagsMap  = await Tg.getTagsForNotes(allIds).catch(() => ({}));
+      if (window.Notara.Activity) {
+        const actRows = await window.Notara.Activity.getAll().catch(() => []);
+        _activityMap = window.Notara.Activity.toMap(actRows);
+      }
+      const newCache = { allNotes, priority, groups, tagsMap };
+      const dataChanged = !_homeCache
+        || allNotes.length !== _homeCache.allNotes.length
+        || allNotes[0]?.updatedAt !== _homeCache.allNotes[0]?.updatedAt
+        || priority.length !== _homeCache.priority.length;
+      _homeCache = newCache;
+      if (dataChanged) _renderHomeContent(main, _homeCache);
+    } catch (e) { console.warn('[Notara] Home fetch error:', e); }
     UI.updateStorageIndicator();
+  }
+
+  /* --- CALENDAR MODAL --- */
+  let _calYear, _calMonth, _calSelectedDate;
+
+  const _HOLIDAYS_ID = {
+    '01-01': 'Tahun Baru',
+    '01-27': 'Isra Mi\'raj',
+    '02-28': 'Tahun Baru Imlek',
+    '03-29': 'Nyepi',
+    '03-31': 'Wafat Isa Almasih',
+    '04-10': 'Hari Raya Idul Fitri',
+    '04-11': 'Hari Raya Idul Fitri',
+    '05-01': 'Hari Buruh',
+    '05-12': 'Kenaikan Isa Almasih',
+    '05-13': 'Hari Raya Waisak',
+    '05-29': 'Hari Raya Idul Adha',
+    '06-01': 'Hari Lahir Pancasila',
+    '06-27': 'Tahun Baru Islam',
+    '08-17': 'Hari Kemerdekaan RI',
+    '09-16': 'Maulid Nabi Muhammad SAW',
+    '10-29': 'Sumpah Pemuda',
+    '11-25': 'Hari Toleransi Internasional',
+    '12-25': 'Hari Natal',
+  };
+
+  function _getHolidays(year) {
+    const result = {};
+    Object.entries(_HOLIDAYS_ID).forEach(([mmdd, name]) => {
+      const key = `${year}-${mmdd}`;
+      result[key] = name;
+    });
+    return result;
+  }
+
+  function _openCalendarModal() {
+    const now = new Date();
+    _calYear = now.getFullYear();
+    _calMonth = now.getMonth();
+    _calSelectedDate = null;
+    _renderCalendarModal();
+  }
+
+  function _renderCalendarModal() {
+    const m = UI.modal({
+      title: '<i class="fa-solid fa-calendar-days"></i> Kalender Pengingat',
+      body: `<div id="cal-body">${_buildCalendarHtml()}</div>`,
+      footer: '',
+    });
+    _bindCalendarEvents(m);
+  }
+
+  function _buildCalendarHtml() {
+    const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    const dayNames = ['Min','Sen','Sel','Rab','Kam','Jum','Sab'];
+    const firstDay = new Date(_calYear, _calMonth, 1).getDay();
+    const daysInMonth = new Date(_calYear, _calMonth + 1, 0).getDate();
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+    const holidays = _getHolidays(_calYear);
+
+    let cells = '';
+    const totalCells = firstDay + daysInMonth;
+    for (let i = 0; i < firstDay; i++) cells += '<div class="cal-cell cal-empty"></div>';
+    for (let d = 1; d <= daysInMonth; d++) {
+      const iso = `${_calYear}-${String(_calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const isToday = iso === todayStr;
+      const isSelected = iso === _calSelectedDate;
+      const isHoliday = holidays[iso];
+      cells += `<div class="cal-cell${isToday ? ' cal-today' : ''}${isSelected ? ' cal-selected' : ''}${isHoliday ? ' cal-holiday-dot' : ''}" data-date="${iso}" title="${isHoliday || ''}">${d}</div>`;
+    }
+    for (let i = totalCells; i < 42; i++) cells += '<div class="cal-cell cal-empty"></div>';
+
+    const allNotes = _homeCache?.allNotes || [];
+    const remindersThisMonth = allNotes.filter(n => {
+      if (!n.reminderAt) return false;
+      const rd = n.reminderAt.slice(0, 7);
+      return rd === `${_calYear}-${String(_calMonth+1).padStart(2,'0')}`;
+    }).sort((a, b) => new Date(a.reminderAt) - new Date(b.reminderAt));
+
+    let reminderListHtml = '';
+    if (remindersThisMonth.length) {
+      reminderListHtml = remindersThisMonth.map(n => {
+        const rd = new Date(n.reminderAt);
+        const day = rd.getDate();
+        const time = rd.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        const iso = n.reminderAt.slice(0, 10);
+        const isSelected = iso === _calSelectedDate;
+        return `<div class="cal-rem-item${isSelected ? ' cal-rem-active' : ''}" data-date="${iso}">
+          <div class="cal-rem-day">${day}</div>
+          <div class="cal-rem-info"><div class="cal-rem-title">${_esc(n.title)}</div><div class="cal-rem-time"><i class="fa-solid fa-bell"></i> ${time}</div></div>
+          <button class="icon-btn cal-note-del" data-nid="${n.id}" title="Hapus" style="font-size:0.65rem;flex-shrink:0"><i class="fa-solid fa-xmark"></i></button>
+        </div>`;
+      }).join('');
+    } else {
+      reminderListHtml = '<div class="cal-empty-msg">Belum ada pengingat bulan ini</div>';
+    }
+
+    const monthHolidays = Object.entries(holidays)
+      .filter(([k]) => k.startsWith(`${_calYear}-${String(_calMonth+1).padStart(2,'0')}`))
+      .map(([k, v]) => {
+        const day = parseInt(k.slice(-2));
+        return `<div class="cal-hol-item"><span class="cal-hol-day">${day}</span><span class="cal-hol-name">${v}</span></div>`;
+      }).join('');
+
+    const detailHtml = _calSelectedDate ? _buildCalendarDetailHtml(_calSelectedDate) : '<div class="cal-hint">Pilih tanggal untuk menambah pengingat</div>';
+
+    return `
+      <div class="cal-layout">
+        <div class="cal-left">
+          <div class="cal-nav">
+            <button class="icon-btn cal-nav-btn" id="cal-prev"><i class="fa-solid fa-chevron-left"></i></button>
+            <span class="cal-month-label">${monthNames[_calMonth]} ${_calYear}</span>
+            <button class="icon-btn cal-nav-btn" id="cal-next"><i class="fa-solid fa-chevron-right"></i></button>
+          </div>
+          <div class="cal-grid">
+            ${dayNames.map(d => `<div class="cal-cell cal-day-name">${d}</div>`).join('')}
+            ${cells}
+          </div>
+          <div id="cal-detail">${detailHtml}</div>
+        </div>
+        <div class="cal-right">
+          ${_calSelectedDate ? `
+          <div class="cal-right-section">
+            <div class="cal-right-title"><i class="fa-solid fa-pen-to-square"></i> Tambah Pengingat <button class="icon-btn cal-close-add" id="cal-close-add" title="Tutup" style="margin-left:auto;width:20px;height:20px;font-size:0.6rem;background:transparent;border:none;box-shadow:none"><i class="fa-solid fa-xmark"></i></button></div>
+            <div class="cal-add-form" id="cal-detail-add">${_buildCalendarAddFormHtml()}</div>
+          </div>
+          ` : ''}
+          <div class="cal-right-section cal-expandable" data-expanded="true">
+            <div class="cal-right-title cal-toggle"><i class="fa-solid fa-bell"></i> Pengingat Bulan Ini <i class="fa-solid fa-chevron-down cal-toggle-icon"></i></div>
+            <div class="cal-expand-body">${reminderListHtml}</div>
+          </div>
+          <div class="cal-right-section cal-expandable" data-expanded="true">
+            <div class="cal-right-title cal-toggle"><i class="fa-solid fa-flag"></i> Hari Besar <i class="fa-solid fa-chevron-down cal-toggle-icon"></i></div>
+            <div class="cal-expand-body">${monthHolidays || '<div class="cal-empty-msg">Tidak ada hari besar bulan ini</div>'}</div>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function _buildCalendarDetailHtml(iso) {
+    const [y, m, d] = iso.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    const label = dateObj.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const holidays = _getHolidays(y);
+    const holidayName = holidays[iso];
+
+    const notes = (_homeCache?.allNotes || []).filter(n => {
+      if (!n.reminderAt) return false;
+      return n.reminderAt.slice(0, 10) === iso;
+    });
+
+    let listHtml = '';
+    if (notes.length) {
+      listHtml = notes.map(n => {
+        const time = n.reminderAt ? new Date(n.reminderAt).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) : '--:--';
+        return `<div class="cal-note-item">
+          <div class="cal-note-time"><i class="fa-solid fa-bell"></i> ${time}</div>
+          <div class="cal-note-title">${_esc(n.title)}</div>
+          <button class="icon-btn cal-note-del" data-nid="${n.id}" title="Hapus pengingat" style="color:var(--label-hard);font-size:0.65rem;flex-shrink:0"><i class="fa-solid fa-trash"></i></button>
+        </div>`;
+      }).join('');
+    }
+
+    return `
+      <div class="cal-detail-header">
+        ${label}
+        ${holidayName ? `<span class="cal-detail-holiday"><i class="fa-solid fa-flag"></i> ${holidayName}</span>` : ''}
+      </div>
+      ${listHtml ? `<div class="cal-note-list">${listHtml}</div>` : '<div class="cal-empty-msg">Tidak ada pengingat di tanggal ini</div>'}
+    `;
+  }
+
+  function _buildCalendarAddFormHtml() {
+    return `
+      <input type="text" id="cal-note-title" class="new-post-textarea" style="min-height:auto;resize:none;margin-bottom:8px" placeholder="Judul pengingat..." maxlength="100">
+      <div class="cal-time-row">
+        <label style="font-size:0.8rem;font-weight:700;color:var(--text-2)">Waktu:</label>
+        <input type="time" id="cal-note-time" value="09:00" style="padding:4px 8px;border:var(--border-w) solid var(--border-strong);background:var(--bg);color:var(--text-1);font-weight:700;font-family:var(--font-body);margin-left:auto">
+      </div>
+      <button class="btn-primary" id="cal-add-btn" style="width:100%;margin-top:8px"><i class="fa-solid fa-plus"></i> Tambah Pengingat</button>
+    `;
+  }
+
+  function _bindCalendarEvents(m) {
+    const body = document.getElementById('cal-body');
+    if (!body) return;
+
+    body.addEventListener('click', async e => {
+      const btn = e.target.closest('button');
+      const cell = e.target.closest('.cal-cell[data-date]');
+      const remItem = e.target.closest('.cal-rem-item');
+      const toggle = e.target.closest('.cal-toggle');
+
+      if (toggle) {
+        const section = toggle.closest('.cal-expandable');
+        if (section) {
+          const expanded = section.dataset.expanded === 'true';
+          section.dataset.expanded = String(!expanded);
+          const icon = toggle.querySelector('.cal-toggle-icon');
+          if (icon) icon.style.transform = expanded ? 'rotate(-90deg)' : '';
+        }
+        return;
+      }
+
+      if (btn?.id === 'cal-close-add' || e.target.closest('#cal-close-add')) { _calSelectedDate = null; _refreshCal(); return; }
+
+      if (btn?.id === 'cal-prev') { _calMonth--; if (_calMonth < 0) { _calMonth = 11; _calYear--; } _refreshCal(); return; }
+      if (btn?.id === 'cal-next') { _calMonth++; if (_calMonth > 11) { _calMonth = 0; _calYear++; } _refreshCal(); return; }
+
+      if (cell) { _calSelectedDate = cell.dataset.date; _refreshCal(); return; }
+
+      if (remItem && !btn?.classList.contains('cal-note-del')) { _calSelectedDate = remItem.dataset.date; _refreshCal(); return; }
+
+      if (btn?.id === 'cal-add-btn') {
+        const titleEl = document.getElementById('cal-note-title');
+        const timeEl  = document.getElementById('cal-note-time');
+        const title   = titleEl?.value.trim();
+        if (!title || !_calSelectedDate) { UI.toast('Isi judul pengingat dulu!', 'warning'); return; }
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Menyimpan...';
+        try {
+          const [y, mo, d] = _calSelectedDate.split('-').map(Number);
+          const [hh, mm] = (timeEl?.value || '09:00').split(':').map(Number);
+          const reminderAt = new Date(y, mo - 1, d, hh, mm).toISOString();
+          const created = await N.create({ title, content: `<p>${_esc(title)}</p>`, label: 'medium' });
+          await N.setReminderAt(created.id, reminderAt);
+          _homeCache = null;
+          const freshNotes = await N.getAll();
+          const freshGroups = await _fetchGroups();
+          const freshTags = await Tg.getTagsForNotes(freshNotes.map(n => n.id)).catch(() => ({}));
+          _homeCache = { allNotes: freshNotes, priority: await N.getPriorityNotes(), groups: freshGroups, tagsMap: freshTags };
+          if (window.Capacitor?.isNativePlatform) Rm.syncNativeSchedules();
+          UI.toast('Pengingat ditambahkan!', 'success');
+          _refreshCal();
+        } catch (err) { UI.toast('Gagal: ' + err.message, 'error'); }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-plus"></i> Tambah Pengingat';
+        return;
+      }
+
+      if (btn?.classList.contains('cal-note-del')) {
+        const nid = btn.dataset.nid;
+        const ok = await UI.confirm({ title: 'Hapus Pengingat', message: 'Pengingat ini akan dihapus dari catatan.', okLabel: 'Hapus' });
+        if (ok) {
+          await N.setReminderAt(nid, null);
+          _homeCache = null;
+          const freshNotes = await N.getAll();
+          const freshGroups = await _fetchGroups();
+          const freshTags = await Tg.getTagsForNotes(freshNotes.map(n => n.id)).catch(() => ({}));
+          _homeCache = { allNotes: freshNotes, priority: await N.getPriorityNotes(), groups: freshGroups, tagsMap: freshTags };
+          if (window.Capacitor?.isNativePlatform) Rm.syncNativeSchedules();
+          UI.toast('Pengingat dihapus', 'info');
+          _refreshCal();
+        }
+        return;
+      }
+    });
+  }
+
+  function _refreshCal() {
+    const body = document.getElementById('cal-body');
+    if (body) body.innerHTML = _buildCalendarHtml();
   }
 
   function _renderHomeContent(main, { allNotes, priority, groups, tagsMap }) {
@@ -627,10 +994,23 @@ window.Notara = window.Notara || {};
     const weekData = _getWeekActivity();
     const maxWds   = Math.max(...weekData.map(d => d.words), 1);
     const statsHtml = `
-      <div class="stats-bar">
-        <div class="stat-pill"><i class="fa-solid fa-fire" style="color:#f5a623"></i><span>${streak} hari beruntun</span></div>
-        <div class="stat-pill"><i class="fa-solid fa-pen" style="color:var(--accent)"></i><span>${todayWds.toLocaleString('id-ID')} kata hari ini</span></div>
-        <div class="stat-pill"><i class="fa-solid fa-note-sticky" style="color:var(--label-easy)"></i><span>${allNotes.length} catatan</span></div>
+      <div class="stats-card">
+        <div class="stats-header"><i class="fa-solid fa-chart-simple"></i> Statistik</div>
+        <div class="stats-grid">
+          <div class="stats-item">
+            <div class="stats-item-icon" style="background:#f5a62320;color:#f5a623"><i class="fa-solid fa-fire"></i></div>
+            <div class="stats-item-info"><div class="stats-item-value">${streak}</div><div class="stats-item-label">Hari beruntun</div></div>
+          </div>
+          <div class="stats-item">
+            <div class="stats-item-icon" style="background:var(--accent);color:var(--bg)"><i class="fa-solid fa-pen"></i></div>
+            <div class="stats-item-info"><div class="stats-item-value">${todayWds.toLocaleString('id-ID')}</div><div class="stats-item-label">Kata hari ini</div></div>
+          </div>
+          <div class="stats-item">
+            <div class="stats-item-icon" style="background:var(--label-easy);color:var(--bg)"><i class="fa-solid fa-note-sticky"></i></div>
+            <div class="stats-item-info"><div class="stats-item-value">${allNotes.length}</div><div class="stats-item-label">Catatan</div></div>
+          </div>
+        </div>
+        <div class="stats-week-title">Aktivitas Mingguan</div>
         <div class="week-chart">
           ${weekData.map(d => `
             <div class="week-bar-wrap" title="${d.label}: ${d.words} kata">
@@ -644,17 +1024,19 @@ window.Notara = window.Notara || {};
     const groupedIds      = new Set(groups.flatMap(g => g.note_ids));
     const ungroupedOthers = others.filter(n => !groupedIds.has(n.id));
     if (_multiSelect) _selectedIds = new Set([..._selectedIds].filter(id => allNotes.some(n => n.id === id)));
-    const multiBar = _multiSelect ? `<div class="multi-select-bar" id="multi-select-bar">${_buildMultiBar(_selectedIds.size, groups)}</div>` : '';
     const groupCards = groups.map(g => _buildGroupCard(g, allNotes, tagsMap, groups)).filter(Boolean).join('');
+    const homeLayout = window.Notara.Storage.get('home_layout', 'grid');
     main.innerHTML = `
       <div class="home-page page-enter">
         <div class="greeting-block">
           <div class="greeting-icon">${_getGreetingIcon()}</div>
           <div class="greeting-text"><div class="greeting-main">${_getGreeting()}</div><div class="greeting-date">${_formatToday()}</div></div>
+          <button class="btn-ghost" id="calendar-open-btn" title="Kalender Pengingat" style="margin-left:auto;font-size:0.85rem;gap:6px"><i class="fa-solid fa-calendar-days"></i> Kalender</button>
         </div>
-        ${statsHtml}
-        ${_buildHeatmap()}
-        ${multiBar}
+        <div class="home-top-row">
+          ${_buildHeatmap()}
+          ${statsHtml}
+        </div>
         ${allNotes.length > 0 && priority.length > 0 ? `
           <div class="section-header"><span class="section-title"><i class="fa-solid fa-bolt"></i> Prioritas</span><span class="section-action" id="show-all-btn">Lihat semua</span></div>
           <div class="flipcard-row" id="flipcard-row"></div>
@@ -666,13 +1048,18 @@ window.Notara = window.Notara || {};
         ${ungroupedOthers.length > 0 ? `
           <div class="section-header" style="margin-top:${priority.length || groupCards ? 'var(--space-md)' : '0'}">
             <span class="section-title"><i class="fa-solid fa-note-sticky"></i> Semua Catatan</span>
-            <button class="btn-ghost" id="ms-toggle-btn" style="font-size:0.75rem;padding:0.3rem 0.8rem;gap:5px"><i class="fa-solid fa-check-double"></i> ${_multiSelect ? 'Batal Pilih' : 'Pilih'}</button>
+            <div style="display:flex;gap:4px;margin-left:auto">
+              <button class="icon-btn group-layout-btn" id="home-layout-btn" data-layout="${homeLayout}" title="Ganti tampilan" style="width:28px;height:28px;font-size:0.75rem">
+                <i class="fa-solid fa-${homeLayout === 'grid' ? 'table-cells-large' : 'list'}"></i>
+              </button>
+              <button class="btn-ghost" id="ms-toggle-btn" style="font-size:0.75rem;padding:0.3rem 0.8rem;gap:5px"><i class="fa-solid fa-check-double"></i> ${_multiSelect ? 'Batal Pilih' : 'Pilih'}</button>
+            </div>
           </div>
-          <div class="notes-grid" id="notes-grid"></div>
+          <div class="notes-grid ${homeLayout === 'list' ? 'notes-list' : ''}" id="notes-grid"></div>
         ` : ''}
         ${!allNotes.length ? `
           <div class="empty-state" style="min-height:40vh">
-            <span class="empty-icon float-hint" style="font-size:3rem;color:var(--accent);opacity:0.4">📝</span>
+            <span class="empty-icon float-hint" style="font-size:3rem;color:var(--accent);opacity:0.4"><i class="fa-solid fa-note-sticky"></i></span>
             <h3>Belum ada catatan</h3><p>Mulai buat catatan pertamamu sekarang!</p>
             <button class="btn-primary" id="empty-new-btn"><i class="fa-solid fa-plus"></i> Catatan Baru</button>
           </div>
@@ -699,7 +1086,17 @@ window.Notara = window.Notara || {};
     document.getElementById('show-all-btn')?.addEventListener('click', () => R.go('search'));
     document.getElementById('empty-new-btn')?.addEventListener('click', _newNote);
     document.getElementById('ms-toggle-btn')?.addEventListener('click', _toggleMultiSelect);
-    _bindMultiBar(groups);
+    document.getElementById('calendar-open-btn')?.addEventListener('click', _openCalendarModal);
+    document.getElementById('home-layout-btn')?.addEventListener('click', function() {
+      const current = this.dataset.layout;
+      const newLayout = current === 'grid' ? 'list' : 'grid';
+      window.Notara.Storage.set('home_layout', newLayout);
+      this.dataset.layout = newLayout;
+      const icon = this.querySelector('i');
+      if (icon) icon.className = `fa-solid fa-${newLayout === 'grid' ? 'table-cells-large' : 'list'}`;
+      const grid = document.getElementById('notes-grid');
+      if (grid) grid.classList.toggle('notes-list', newLayout === 'list');
+    });
   }
 
   /* --- FLIPCARD --- */
@@ -793,6 +1190,8 @@ window.Notara = window.Notara || {};
     if (!note) { R.go('home'); return; }
     UI.setTitle(note.title);
     UI.setActiveNav('home');
+    document.body.classList.add('reader-view');
+    main.classList.add('reader-content');
     const labelMap  = { easy: 'chip-easy', medium: 'chip-medium', hard: 'chip-hard' };
     const labelText = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
     const noteTags  = await Tg.getNoteTags(noteId).catch(() => []);
@@ -810,29 +1209,48 @@ window.Notara = window.Notara || {};
     const tagsHtml = noteTags.length ? `<div class="read-tags">${noteTags.map(t => `<span class="tag-chip" style="background:${t.color}20;color:${t.color};border:1px solid ${t.color}40">${_esc(t.name)}</span>`).join('')}</div>` : '';
     main.innerHTML = `
       <div class="read-page page-enter">
-        <div class="read-header">
-          <button class="btn-ghost" id="read-back"><i class="fa-solid fa-arrow-left"></i> Kembali</button>
-          <div style="display:flex;gap:8px">
-            <button class="btn-ghost" id="read-edit"><i class="fa-solid fa-pen"></i> Edit</button>
-            <button class="icon-btn" id="read-more" title="Opsi lainnya"><i class="fa-solid fa-ellipsis-vertical"></i></button>
-          </div>
-        </div>
-        <div class="read-meta">
-          <span class="chip ${labelMap[note.label] || 'chip-medium'}">${labelText[note.label] || note.label}</span>
-          <span class="read-date">${UI.formatDate(note.updatedAt)}</span>
-          ${note.pinned   ? '<span class="read-badge"><i class="fa-solid fa-thumbtack"></i></span>' : ''}
-          ${note.favorite ? '<span class="read-badge"><i class="fa-solid fa-star" style="color:#f5a623"></i></span>' : ''}
-        </div>
-        ${dtMeta   ? `<div class="read-dt-meta">${dtMeta}</div>` : ''}
-        ${tagsHtml ? tagsHtml : ''}
         <h1 class="read-title">${_esc(note.title)}</h1>
         <div class="read-body">${note.content || '<p style="color:var(--text-3)">Catatan ini kosong.</p>'}</div>
       </div>
     `;
-    document.getElementById('read-back')?.addEventListener('click', () => { UI.closePopup(); R.back(); });
-    document.getElementById('read-edit')?.addEventListener('click', () => { UI.closePopup(); R.go('edit/' + noteId); });
-    document.getElementById('read-more')?.addEventListener('click', e => { e.stopPropagation(); _noteActions(noteId); });
+    _updateTopbarForReader(noteId, { note, labelMap, labelText, dtMeta, tagsHtml });
     document.querySelectorAll('.note-wikilink').forEach(link => { link.addEventListener('click', e => { e.preventDefault(); const id = link.dataset.id; if (id) R.go('read/' + id); }); });
+  }
+
+  function _updateTopbarForReader(noteId, { note, labelMap, labelText, dtMeta, tagsHtml }) {
+    const topbar = document.getElementById('topbar');
+    if (!topbar) return;
+    const normalItems = topbar.querySelectorAll('.topbar-normal-item');
+    const readerBar = document.getElementById('topbar-reader-bar');
+    normalItems.forEach(el => el.style.display = 'none');
+    if (readerBar) {
+      readerBar.style.display = 'flex';
+      readerBar.innerHTML = `
+        <button class="icon-btn" id="read-back" title="Kembali"><i class="fa-solid fa-arrow-left"></i></button>
+        <div class="reader-topbar-meta">
+          <span class="chip ${labelMap[note.label] || 'chip-medium'}" style="font-size:0.65rem;padding:2px 8px">${labelText[note.label] || note.label}</span>
+          <span class="read-date reader-date-desktop" style="font-size:0.65rem">${UI.formatDate(note.updatedAt)}</span>
+          ${note.pinned   ? '<span class="read-badge" style="font-size:0.65rem"><i class="fa-solid fa-thumbtack"></i></span>' : ''}
+          ${note.favorite ? '<span class="read-badge" style="font-size:0.65rem"><i class="fa-solid fa-star" style="color:#f5a623"></i></span>' : ''}
+          ${dtMeta ? `<span class="reader-dt-meta" style="font-size:0.65rem">${dtMeta}</span>` : ''}
+          ${tagsHtml ? `<span class="reader-tags-inline" style="font-size:0.65rem">${tagsHtml}</span>` : ''}
+        </div>
+        <button class="icon-btn" id="read-edit" title="Edit"><i class="fa-solid fa-pen"></i></button>
+        <button class="icon-btn" id="read-more" title="Opsi lainnya"><i class="fa-solid fa-ellipsis-vertical"></i></button>
+      `;
+      document.getElementById('read-back')?.addEventListener('click', () => { UI.closePopup(); _restoreTopbarFromReader(); R.back(); });
+      document.getElementById('read-edit')?.addEventListener('click', () => { UI.closePopup(); _restoreTopbarFromReader(); R.go('edit/' + noteId); });
+      document.getElementById('read-more')?.addEventListener('click', e => { e.stopPropagation(); _noteActions(noteId); });
+    }
+  }
+
+  function _restoreTopbarFromReader() {
+    const topbar = document.getElementById('topbar');
+    if (!topbar) return;
+    const normalItems = topbar.querySelectorAll('.topbar-normal-item');
+    const readerBar = document.getElementById('topbar-reader-bar');
+    normalItems.forEach(el => el.style.display = '');
+    if (readerBar) { readerBar.style.display = 'none'; readerBar.innerHTML = ''; }
   }
 
   /* --- PIN ENTRY --- */
@@ -871,20 +1289,36 @@ window.Notara = window.Notara || {};
     let allTags = [];
     try { allTags = await Tg.getAll(); } catch {}
     const tagFilterHtml = allTags.length ? allTags.map(t => `<button class="filter-chip" data-filter="tag:${t.id}" style="--tag-color:${t.color}"><span style="width:8px;height:8px;border-radius:50%;background:${t.color};display:inline-block"></span> ${_esc(t.name)}</button>`).join('') : '';
+    const FILTER_OPTIONS = [
+      { value: 'all', label: 'Semua', icon: '' },
+      { value: 'easy', label: 'Easy', icon: '<i class="fa-solid fa-circle" style="color:var(--label-easy);font-size:0.6rem"></i>' },
+      { value: 'medium', label: 'Medium', icon: '<i class="fa-solid fa-circle" style="color:var(--label-medium);font-size:0.6rem"></i>' },
+      { value: 'hard', label: 'Hard', icon: '<i class="fa-solid fa-circle" style="color:var(--label-hard);font-size:0.6rem"></i>' },
+      { value: 'pinned', label: 'Pin', icon: '<i class="fa-solid fa-thumbtack"></i>' },
+      { value: 'favorite', label: 'Favorit', icon: '<i class="fa-solid fa-star"></i>' },
+      ...allTags.map(t => ({ value: 'tag:' + t.id, label: t.name, icon: `<span style="width:8px;height:8px;border-radius:50%;background:${t.color};display:inline-block"></span>` })),
+    ];
+    const currentFilterLabel = FILTER_OPTIONS.find(o => o.value === 'all')?.label || 'Semua';
     main.innerHTML = `
       <div class="search-page page-enter">
         <div class="search-input-wrap">
           <i class="fa-solid fa-magnifying-glass search-input-icon"></i>
           <input class="search-input" id="search-input" placeholder="Cari catatan..." value="${_esc(query)}" autofocus>
         </div>
-        <div class="filter-bar" id="filter-bar" style="overflow-x:auto;flex-wrap:nowrap">
-          <button class="filter-chip active" data-filter="all">Semua</button>
-          <button class="filter-chip" data-filter="easy"><i class="fa-solid fa-circle" style="color:var(--label-easy);font-size:0.6rem"></i> Easy</button>
-          <button class="filter-chip" data-filter="medium"><i class="fa-solid fa-circle" style="color:var(--label-medium);font-size:0.6rem"></i> Medium</button>
-          <button class="filter-chip" data-filter="hard"><i class="fa-solid fa-circle" style="color:var(--label-hard);font-size:0.6rem"></i> Hard</button>
-          <button class="filter-chip" data-filter="pinned"><i class="fa-solid fa-thumbtack"></i> Pin</button>
-          <button class="filter-chip" data-filter="favorite"><i class="fa-solid fa-star"></i> Favorit</button>
-          ${tagFilterHtml}
+        <div class="filter-dropdown-row">
+          <div class="dropdown-wrap" data-dropdown="filter">
+            <button class="dropdown-trigger" data-dropdown-toggle="filter">
+              <span class="dropdown-value" id="filter-dropdown-label">${currentFilterLabel}</span>
+              <i class="fa-solid fa-chevron-down dropdown-arrow"></i>
+            </button>
+            <div class="dropdown-menu" id="dropdown-filter">
+              ${FILTER_OPTIONS.map(o => `
+                <div class="dropdown-item ${o.value === 'all' ? 'active' : ''}" data-filter-pick="${o.value}">
+                  <span style="display:flex;align-items:center;gap:8px">${o.icon}${_esc(o.label)}</span>
+                </div>
+              `).join('')}
+            </div>
+          </div>
         </div>
         <div id="search-results" class="notes-grid"></div>
       </div>
@@ -918,10 +1352,29 @@ window.Notara = window.Notara || {};
       grid.innerHTML  = results.map(n => _buildNoteCard(n, tagsMap[n.id] || [])).join('');
       _bindNoteCards(grid);
     }
-    document.querySelectorAll('.filter-chip').forEach(chip => {
-      chip.addEventListener('click', () => {
-        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
-        chip.classList.add('active'); _activeFilter = chip.dataset.filter; doSearch();
+    function _closeAllDropdowns() {
+      document.querySelectorAll('.dropdown-wrap.open').forEach(function(w) { w.classList.remove('open'); });
+    }
+    document.addEventListener('click', _closeAllDropdowns);
+    document.querySelectorAll('[data-dropdown-toggle]').forEach(function(btn) {
+      btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var wrap = this.closest('.dropdown-wrap');
+        var isOpen = wrap.classList.contains('open');
+        _closeAllDropdowns();
+        if (!isOpen) wrap.classList.add('open');
+      });
+    });
+    document.querySelectorAll('[data-filter-pick]').forEach(function(el) {
+      el.addEventListener('click', function() {
+        _activeFilter = el.dataset.filterPick;
+        var wrap = document.querySelector('[data-dropdown="filter"]');
+        var label = FILTER_OPTIONS.find(function(o) { return o.value === _activeFilter; })?.label || 'Semua';
+        wrap.querySelector('.dropdown-value').textContent = label;
+        wrap.querySelectorAll('.dropdown-item').forEach(function(x) { x.classList.remove('active'); });
+        el.classList.add('active');
+        _closeAllDropdowns();
+        doSearch();
       });
     });
     let _debounce;
@@ -1037,9 +1490,12 @@ window.Notara = window.Notara || {};
     UI.setTitle('Publikasi'); UI.setActiveNav('posts'); _postPage = 0;
     main.innerHTML = `
       <div class="posts-page page-enter">
-        <div class="posts-header"><h2><i class="fa-solid fa-quote-left"></i> Publikasi</h2></div>
+        <div class="posts-header">
+          <h2><i class="fa-solid fa-quote-left"></i> Publikasi</h2>
+          <button class="btn-primary" id="new-post-toggle" style="font-size:0.85rem"><i class="fa-solid fa-plus"></i> Buat Postingan</button>
+        </div>
         <p style="color:var(--text-3);font-size:0.83rem;margin-bottom:var(--space-lg)">Bagikan kata-kata & quotes yang menginspirasi. Semua pengguna bisa membaca dan memberi like.</p>
-        <div class="new-post-card">
+        <div class="new-post-card" id="new-post-card" style="display:none">
           <div class="post-author" style="margin-bottom:var(--space-sm)"><div class="post-avatar">${_initials(Au.getName())}</div><span style="font-size:0.88rem;font-weight:600;color:var(--text-1)">${_esc(Au.getName())}</span></div>
           <textarea id="new-post-textarea" class="new-post-textarea" placeholder="Tulis kata-kata, quotes, atau pikiran yang ingin kamu bagikan..." maxlength="500" rows="3"></textarea>
           <div class="new-post-footer"><span class="post-char-count" id="post-char-count">0 / 500</span><button class="btn-primary" id="post-submit-btn" disabled><i class="fa-solid fa-paper-plane"></i> Publikasikan</button></div>
@@ -1048,7 +1504,10 @@ window.Notara = window.Notara || {};
         <div id="feed-load-more" style="text-align:center;padding:var(--space-md);display:none"><button class="btn-ghost" id="load-more-btn"><i class="fa-solid fa-chevron-down"></i> Muat Lebih Banyak</button></div>
       </div>
     `;
+    const card     = document.getElementById('new-post-card');
+    const toggle   = document.getElementById('new-post-toggle');
     const textarea = document.getElementById('new-post-textarea'); const submitBtn = document.getElementById('post-submit-btn');
+    toggle?.addEventListener('click', () => { const show = card.style.display === 'none'; card.style.display = show ? 'block' : 'none'; if (show) textarea?.focus(); });
     textarea?.addEventListener('input', () => { const len = textarea.value.length; document.getElementById('post-char-count').textContent = `${len} / 500`; submitBtn.disabled = len < 1; });
     submitBtn?.addEventListener('click', async () => {
       const content = textarea.value.trim(); if (!content) return;
@@ -1135,7 +1594,7 @@ window.Notara = window.Notara || {};
             <div class="comment-item">
               <div class="comment-avatar">${_initials(c.author_name || '?')}</div>
               <div class="comment-body"><div class="comment-author">${_esc(c.author_name || 'Anonim')}</div><div class="comment-text">${_esc(c.content)}</div><div class="comment-time">${_relativeTime(c.created_at)}</div></div>
-              ${c.user_id === userId ? `<button class="icon-btn comment-del-btn" data-id="${c.id}" style="font-size:0.75rem;color:var(--text-3);width:28px;height:28px;flex-shrink:0"><i class="fa-solid fa-xmark"></i></button>` : ''}
+              ${c.user_id === userId ? `<button class="icon-btn comment-del-btn" data-id="${c.id}" style="font-size:0.75rem;width:28px;height:28px;flex-shrink:0"><i class="fa-solid fa-xmark"></i></button>` : ''}
             </div>
           `).join('');
           listEl.querySelectorAll('.comment-del-btn').forEach(btn => { btn.addEventListener('click', async () => { try { const result = await Pt.removeComment(btn.dataset.id); btn.closest('.comment-item').remove(); UI.toast('Komentar dihapus', 'info'); const commentBtn = document.querySelector(`.comment-btn[data-post-id="${result.postId}"]`); if (commentBtn) { const span = commentBtn.querySelector('span'); if (span) { const current = parseInt(span.textContent) || 0; span.textContent = `${Math.max(0, current - 1)} komentar`; } } } catch { UI.toast('Gagal hapus komentar', 'error'); } }); });
@@ -1234,7 +1693,7 @@ window.Notara = window.Notara || {};
 
       const timeStr    = _fmt(_pomo.remaining);
       const phaseLabel = _pomo.phase === 'work' ? 'KERJA' : _pomo.phase === 'break' ? 'ISTIRAHAT' : 'ISTIRAHAT PANJANG';
-      const icon       = _pomo.phase === 'work' ? '💻' : '☕';
+      const icon       = _pomo.phase === 'work' ? '<i class="fa-solid fa-laptop"></i>' : '<i class="fa-solid fa-mug-hot"></i>';
 
       document.getElementById('pomo-time-mini').textContent  = timeStr;
       document.getElementById('pomo-time-big').textContent   = timeStr;
@@ -1251,7 +1710,7 @@ window.Notara = window.Notara || {};
         else if (i === _pomo.session && _pomo.phase === 'work') dot.classList.add('current');
       });
 
-      document.getElementById('pomo-icon-mini').textContent = icon;
+      document.getElementById('pomo-icon-mini').innerHTML = icon;
     }
 
     function _nextPhase() {
@@ -1277,7 +1736,7 @@ window.Notara = window.Notara || {};
         Rm.fireImmediate('Notara Pomodoro', msg, 'pomo_timer');
       }
 
-      UI.toast(_pomo.phase === 'work' ? '💻 Istirahat selesai - ayo kerja lagi!' : '☕ Sesi selesai - istirahat sejenak!', 'info', 4000);
+      UI.toast(_pomo.phase === 'work' ? '<i class="fa-solid fa-laptop"></i> Istirahat selesai - ayo kerja lagi!' : '<i class="fa-solid fa-mug-hot"></i> Sesi selesai - istirahat sejenak!', 'info', 4000);
       _render();
     }
 
@@ -1395,7 +1854,7 @@ window.Notara = window.Notara || {};
   }
 
   function _showShortcutHelp() {
-    UI.modal({ title: '⌨️ Keyboard Shortcuts', body: `<div class="shortcut-list">${[['Ctrl + N', 'Catatan baru'],['Ctrl + K', 'Command palette'],['Ctrl + F', 'Cari catatan'],['Ctrl + S', 'Simpan (di editor)'],['Ctrl + H', 'Ke Beranda'],['Ctrl + ,', 'Ke Pengaturan'],['Ctrl + B', 'Bold (di editor)'],['Ctrl + I', 'Italic (di editor)'],['Ctrl + L', 'Tambah checklist (di editor)'],['F11', 'Zen Mode (di editor)'],['?', 'Tampilkan bantuan ini']].map(([k, v]) => `<div class="shortcut-row"><span class="shortcut-keys">${k.split(' + ').map(p => `<kbd>${p}</kbd>`).join('<span class="shortcut-plus">+</span>')}</span><span class="shortcut-desc">${v}</span></div>`).join('')}</div>` });
+    UI.modal({ title: '<i class="fa-solid fa-keyboard"></i> Keyboard Shortcuts', body: `<div class="shortcut-list">${[['Ctrl + N', 'Catatan baru'],['Ctrl + K', 'Command palette'],['Ctrl + F', 'Cari catatan'],['Ctrl + S', 'Simpan (di editor)'],['Ctrl + H', 'Ke Beranda'],['Ctrl + ,', 'Ke Pengaturan'],['Ctrl + B', 'Bold (di editor)'],['Ctrl + I', 'Italic (di editor)'],['Ctrl + L', 'Tambah checklist (di editor)'],['F11', 'Zen Mode (di editor)'],['?', 'Tampilkan bantuan ini']].map(([k, v]) => `<div class="shortcut-row"><span class="shortcut-keys">${k.split(' + ').map(p => `<kbd>${p}</kbd>`).join('<span class="shortcut-plus">+</span>')}</span><span class="shortcut-desc">${v}</span></div>`).join('')}</div>` });
   }
 
   /* --- UTILITIES --- */
@@ -1415,7 +1874,7 @@ window.Notara = window.Notara || {};
         <aside id="sidebar" class="sidebar" role="navigation" aria-label="Navigasi utama">
           <div class="sidebar-drag-handle" aria-hidden="true"></div>
           <div class="sidebar-header">
-            <div class="logo"><span class="logo-icon" aria-hidden="true">📝</span><span class="logo-text">Notara</span></div>
+            <div class="logo"><img src="ikon-non-transparant.png" alt="" class="logo-icon" width="24" height="24" aria-hidden="true"><span class="logo-text">Notara</span></div>
             <button id="sidebar-close" class="icon-btn sidebar-close-btn" aria-label="Tutup sidebar"><i class="fa-solid fa-xmark"></i></button>
           </div>
           <nav class="sidebar-nav">
@@ -1434,14 +1893,23 @@ window.Notara = window.Notara || {};
         <div id="sidebar-overlay" class="sidebar-overlay" role="presentation"></div>
         <div id="app-wrapper" class="app-wrapper">
           <header class="topbar" id="topbar" role="banner">
-            <button id="menu-btn" class="icon-btn menu-btn" aria-label="Buka menu"><i class="fa-solid fa-bars"></i></button>
-            <div class="topbar-title" id="topbar-title" aria-live="polite">Beranda</div>
-            <div class="topbar-actions">
+            <button id="menu-btn" class="icon-btn menu-btn topbar-normal-item" aria-label="Buka menu"><i class="fa-solid fa-bars"></i></button>
+            <div class="topbar-title topbar-normal-item" id="topbar-title" aria-live="polite">Beranda</div>
+            <div class="topbar-actions topbar-normal-item">
               <button id="pomo-toggle-btn" class="icon-btn" title="Pomodoro Timer" aria-label="Pomodoro timer"><i class="fa-solid fa-clock"></i></button>
               <button id="shortcut-help-btn" class="icon-btn" title="Keyboard Shortcuts (?)" aria-label="Bantuan shortcut"><i class="fa-solid fa-keyboard"></i></button>
               <button id="theme-toggle" class="icon-btn" title="Ganti tema" aria-label="Ganti tema"><i class="fa-solid fa-circle-half-stroke"></i></button>
               <button id="new-note-btn" class="btn-primary new-note-btn" aria-label="Catatan baru" title="Catatan baru (Ctrl+N)"><i class="fa-solid fa-plus"></i></button>
             </div>
+            <div class="topbar-ms-bar" id="topbar-ms-bar" style="display:none"></div>
+            <div class="topbar-editor-bar" id="topbar-editor-bar" style="display:none">
+              <button class="icon-btn" id="editor-back" title="Kembali"><i class="fa-solid fa-arrow-left"></i></button>
+              <span class="editor-wordcount" id="editor-wordcount" style="flex:1;text-align:center;font-size:0.8rem;font-weight:700;color:var(--text-2)"></span>
+              <span class="editor-status" id="editor-status" style="font-size:0.7rem;font-weight:700"></span>
+              <button class="icon-btn" id="editor-version-btn" title="Riwayat Versi"><i class="fa-solid fa-clock-rotate-left"></i></button>
+              <button class="icon-btn" id="editor-zen-btn" title="Zen Mode (F11)"><i class="fa-solid fa-expand"></i></button>
+            </div>
+            <div class="topbar-reader-bar" id="topbar-reader-bar" style="display:none"></div>
           </header>
           <main id="app-main" class="app-main" role="main"><div class="page-loading"><div class="loader-ring"></div></div></main>
         </div>
@@ -1450,17 +1918,17 @@ window.Notara = window.Notara || {};
       <div id="toast-container" class="toast-container" role="status" aria-live="polite" aria-atomic="true"></div>
       <div id="modal-overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-hidden="true"><div class="modal" id="modal"><div class="modal-header"><h3 id="modal-title"></h3><button id="modal-close" class="icon-btn" aria-label="Tutup"><i class="fa-solid fa-xmark"></i></button></div><div class="modal-body" id="modal-body"></div><div class="modal-footer" id="modal-footer"></div></div></div>
       <div id="pomodoro-widget" class="pomodoro-widget" style="display:none">
-        <div id="pomo-collapsed" class="pomo-collapsed"><span id="pomo-icon-mini">💻</span><span id="pomo-time-mini" class="pomo-time-text">25:00</span><button id="pomo-mini-play" class="pomo-mini-play"><i class="fa-solid fa-play"></i></button></div>
+        <div id="pomo-collapsed" class="pomo-collapsed"><span id="pomo-icon-mini"><i class="fa-solid fa-laptop"></i></span><span id="pomo-time-mini" class="pomo-time-text">25:00</span><button id="pomo-mini-play" class="pomo-mini-play"><i class="fa-solid fa-play"></i></button></div>
         <div id="pomo-expanded" class="pomo-expanded" style="display:none">
-          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-sm)"><span class="pomo-phase-label" id="pomo-phase-label">KERJA</span><div style="display:flex;gap:4px"><button id="pomo-collapse" class="icon-btn" style="width:26px;height:26px;font-size:0.7rem" title="Sembunyikan"><i class="fa-solid fa-chevron-down"></i></button><button id="pomo-close" class="icon-btn" style="width:26px;height:26px;font-size:0.7rem;color:var(--text-3)" title="Tutup"><i class="fa-solid fa-xmark"></i></button></div></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:var(--space-sm)"><span class="pomo-phase-label" id="pomo-phase-label">KERJA</span><div style="display:flex;gap:4px"><button id="pomo-collapse" class="icon-btn" style="width:26px;height:26px;font-size:0.7rem" title="Sembunyikan"><i class="fa-solid fa-chevron-down"></i></button><button id="pomo-close" class="icon-btn" style="width:26px;height:26px;font-size:0.7rem" title="Tutup"><i class="fa-solid fa-xmark"></i></button></div></div>
           <div class="pomo-big-time" id="pomo-time-big">25:00</div>
           <div class="pomo-session-label" id="pomo-session-label">Sesi 1 / 4</div>
           <div class="pomo-dot-row"><div class="pomo-dot current"></div><div class="pomo-dot"></div><div class="pomo-dot"></div><div class="pomo-dot"></div></div>
           <div class="pomo-controls"><button id="pomo-reset" class="pomo-btn pomo-btn-ghost" title="Reset"><i class="fa-solid fa-rotate-left"></i></button><button id="pomo-play" class="pomo-btn pomo-btn-primary" title="Play/Pause"><i class="fa-solid fa-play"></i></button><button id="pomo-skip" class="pomo-btn pomo-btn-ghost" title="Skip fase"><i class="fa-solid fa-forward-step"></i></button></div>
         </div>
       </div>
-      <nav class="mobile-bottom-nav" id="mobile-bottom-nav" role="navigation" aria-label="Navigasi bawah"><button id="mobile-pomo-btn" class="mobile-nav-btn" aria-label="Pomodoro Timer" title="Pomodoro Timer"><i class="fa-solid fa-clock"></i><span>Pomodoro</span></button><button id="mobile-theme-btn" class="mobile-nav-btn" aria-label="Ganti Tema" title="Ganti Tema"><i class="fa-solid fa-circle-half-stroke"></i><span>Tema</span></button><button id="mobile-menu-btn" class="mobile-nav-btn mobile-nav-menu" aria-label="Buka Menu" title="Menu"><i class="fa-solid fa-bars"></i><span>Menu</span></button></nav>
-      <button id="mobile-fab-btn" class="mobile-fab" aria-label="Catatan Baru" title="Catatan Baru"><i class="fa-solid fa-plus"></i></button>
+      <nav class="mobile-bottom-nav" id="mobile-bottom-nav" role="navigation" aria-label="Navigasi bawah"><button id="mobile-pomo-btn" class="mobile-nav-btn" aria-label="Pomodoro Timer" title="Pomodoro Timer"><i class="fa-solid fa-clock"></i><span>Pomodoro</span></button><button id="mobile-newnote-btn" class="mobile-nav-btn mobile-nav-newnote" aria-label="Catatan Baru" title="Catatan Baru"><i class="fa-solid fa-plus"></i><span>Catatan Baru</span></button><button id="mobile-menu-btn" class="mobile-nav-btn mobile-nav-menu" aria-label="Buka Menu" title="Menu"><i class="fa-solid fa-bars"></i><span>Menu</span></button></nav>
+
     `;
 
     S.init(); const sidebarCtrl = UI.initSidebar();
@@ -1468,29 +1936,36 @@ window.Notara = window.Notara || {};
     document.getElementById('new-note-btn')?.addEventListener('click', _newNote);
     document.getElementById('shortcut-help-btn')?.addEventListener('click', _showShortcutHelp);
     document.getElementById('pomo-toggle-btn')?.addEventListener('click', () => { if (window._pomoToggleVisible) window._pomoToggleVisible(); });
-    document.getElementById('mobile-menu-btn')?.addEventListener('click', () => { sidebarCtrl?.open(); });
+    document.getElementById('mobile-menu-btn')?.addEventListener('click', () => { sidebarCtrl?.toggle(); });
     document.getElementById('mobile-pomo-btn')?.addEventListener('click', () => { if (window._pomoToggleVisible) window._pomoToggleVisible(); });
-    document.getElementById('mobile-theme-btn')?.addEventListener('click', S.cycleTheme);
-    document.getElementById('mobile-fab-btn')?.addEventListener('click', _newNote);
+    document.getElementById('mobile-newnote-btn')?.addEventListener('click', _newNote);
 
     _initKeyboardShortcuts();
     _initPomodoro();
 
-    function _setFabVisible(visible) { window._fabVisible = visible; const fab = document.getElementById('mobile-fab-btn'); if (fab) fab.style.display = visible ? '' : 'none'; }
-
-    R.on('home',     () => { _setFabVisible(true);  UI.closePopup(); Ed.unmount(); _renderHome(); });
-    R.on('read/:id', p  => { _setFabVisible(false); UI.closePopup(); Ed.unmount(); _renderRead(p.id); });
-    R.on('edit/:id', p  => { _setFabVisible(false); UI.closePopup(); Ed.mount(p.id); UI.setTitle('Edit'); UI.setActiveNav('home'); });
-    R.on('new',      () => { _setFabVisible(true);  UI.closePopup(); Ed.unmount(); _newNote(); });
-    R.on('search',   () => { _setFabVisible(true);  UI.closePopup(); Ed.unmount(); _renderSearch(); });
-    R.on('timeline', () => { _setFabVisible(true);  UI.closePopup(); Ed.unmount(); _renderTimeline(); });
-    R.on('tags',     () => { _setFabVisible(true);  UI.closePopup(); Ed.unmount(); _renderTags(); });
-    R.on('posts',    () => { _setFabVisible(true);  UI.closePopup(); Ed.unmount(); _renderPosts(); });
-    R.on('trash',    () => { _setFabVisible(true);  UI.closePopup(); Ed.unmount(); _renderTrash(); });
-    R.on('settings', () => { _setFabVisible(true);  UI.closePopup(); Ed.unmount(); S.renderPage(); });
+    R.on('home',     () => { UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); _renderHome(); });
+    R.on('read/:id', p  => { _exitMultiSelect(); UI.closePopup(); Ed.unmount(); _renderRead(p.id); });
+    R.on('edit/:id', p  => { _exitMultiSelect(); UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); Ed.mount(p.id); UI.setTitle('Edit'); UI.setActiveNav('home'); });
+    R.on('new',      () => { _exitMultiSelect(); UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); _newNote(); });
+    R.on('search',   () => { _exitMultiSelect(); UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); _renderSearch(); });
+    R.on('timeline', () => { _exitMultiSelect(); UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); _renderTimeline(); });
+    R.on('tags',     () => { _exitMultiSelect(); UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); _renderTags(); });
+    R.on('posts',    () => { _exitMultiSelect(); UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); _renderPosts(); });
+    R.on('trash',    () => { _exitMultiSelect(); UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); _renderTrash(); });
+    R.on('settings', () => { UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); S.renderPage(); });
 
     N.onChange(() => UI.updateStorageIndicator());
     Rm.start();
+
+    window.addEventListener('hashchange', () => {
+      const main = document.getElementById('app-main');
+      if (main) main.scrollTop = 0;
+    });
+
+    if (window.Notara.UpdateChecker) {
+      window.Notara.UpdateChecker.checkForUpdate(true);
+      window.Notara.UpdateChecker.startRealtime();
+    }
 
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('sw.js').then(reg => {
@@ -1509,6 +1984,7 @@ window.Notara = window.Notara || {};
     main?.addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - startX; if (dx > 80 && startX < 50) R.back(); }, { passive: true });
   }
 
-  async function init() { S.init(); await Au.init(loggedIn => { if (loggedIn) _mountApp(); else Au.renderAuthPage(); }); }
+  let _appMounted = false;
+  async function init() { S.init(); await Au.init(loggedIn => { if (loggedIn) { _resetAppState(); if (!_appMounted) { _appMounted = true; _mountApp(); } } else { _appMounted = false; _resetAppState(); if (window.Notara.UpdateChecker) window.Notara.UpdateChecker.stopRealtime(); Au.renderAuthPage(); } }); }
   if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
 })();

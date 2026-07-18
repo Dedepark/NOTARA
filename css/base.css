@@ -17,10 +17,8 @@ body {
               font-family var(--dur-base) var(--ease-smooth);
 }
 
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: var(--sb-track); border-left: var(--border-w) solid var(--border-strong); }
-::-webkit-scrollbar-thumb { background: var(--sb-thumb); border-radius: var(--radius-sm); }
-::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+::-webkit-scrollbar { width: 0; height: 0; }
+html { scrollbar-width: none; }
 
 /* Typography */
 h1,h2,h3,h4,h5,h6 {
@@ -56,6 +54,17 @@ input, textarea, select {
 img { max-width: 100%; display: block; }
 
 ::selection { background: var(--accent); color: var(--bg); }
+
+*, *::before, *::after {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+input, textarea, .editor-body, [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}
 
 :focus-visible {
   outline: var(--border-w) solid var(--accent);
@@ -109,7 +118,7 @@ img { max-width: 100%; display: block; }
   border: var(--border-w) solid var(--border-strong);
   border-radius: var(--radius-md);
   font-size: 0.85rem;
-  color: var(--text-1);
+  color: var(--accent);
   box-shadow: 2px 2px 0px var(--shadow-color);
   transition: all var(--dur-fast) var(--ease-smooth);
 }
@@ -163,6 +172,101 @@ img { max-width: 100%; display: block; }
   background: var(--surface);
   box-shadow: var(--shadow-sm);
 }
+
+/* ============================================
+   SaaS MODE - Base Overrides
+   ============================================ */
+[data-style="saas"] .btn-primary { border-radius: var(--radius-md); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+[data-style="saas"] .btn-primary:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.12); transform: translateY(-1px); }
+[data-style="saas"] .btn-primary:active { transform: var(--btn-transform); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+
+[data-style="saas"] .btn-ghost { border-radius: var(--radius-md); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+[data-style="saas"] .btn-ghost:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.1); transform: translateY(-1px); }
+[data-style="saas"] .btn-ghost:active { transform: var(--btn-transform); box-shadow: none; }
+
+[data-style="saas"] .icon-btn { border-radius: var(--radius-md); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+[data-style="saas"] .icon-btn:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.1); transform: translateY(-1px); }
+[data-style="saas"] .icon-btn:active { transform: var(--btn-transform); box-shadow: none; }
+
+[data-style="saas"] .chip { border-radius: var(--radius-full); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+
+[data-style="saas"] .empty-state { border-radius: var(--radius-lg); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+[data-style="saas"] .loader-ring { box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+[data-style="saas"] .divider { background: var(--border); height: 1px; }
+
+/* ============================================
+   RETRO GAZETTE MODE - Base Overrides
+   ============================================ */
+[data-style="retro-gazette"] .btn-primary { border-radius: var(--radius-md); font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; font-size: 0.78rem; box-shadow: 2px 2px 0px var(--border-strong); }
+[data-style="retro-gazette"] .btn-primary:hover { box-shadow: 3px 3px 0px var(--border-strong); transform: translate(-1px, -1px); }
+[data-style="retro-gazette"] .btn-primary:active { transform: translate(1px, 1px); box-shadow: 0 0 0 transparent; }
+
+[data-style="retro-gazette"] .btn-ghost { border-radius: var(--radius-md); font-weight: 900; letter-spacing: 0.03em; box-shadow: 1px 1px 0px var(--border-strong); }
+[data-style="retro-gazette"] .btn-ghost:hover { box-shadow: 2px 2px 0px var(--border-strong); transform: translate(-1px, -1px); }
+[data-style="retro-gazette"] .btn-ghost:active { transform: translate(1px, 1px); box-shadow: none; }
+
+[data-style="retro-gazette"] .icon-btn { border-radius: var(--radius-md); box-shadow: 1px 1px 0px var(--border-strong); }
+[data-style="retro-gazette"] .icon-btn:hover { box-shadow: 2px 2px 0px var(--border-strong); transform: translate(-1px, -1px); }
+[data-style="retro-gazette"] .icon-btn:active { transform: translate(1px, 1px); box-shadow: none; }
+
+[data-style="retro-gazette"] .chip { border-radius: var(--radius-full); font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; box-shadow: 1px 1px 0px var(--border-strong); }
+
+[data-style="retro-gazette"] .empty-state { border-radius: var(--radius-lg); box-shadow: 2px 2px 0px var(--border-strong); }
+[data-style="retro-gazette"] .divider { background: var(--border-strong); height: 1px; }
+[data-style="retro-gazette"] .loader-ring { box-shadow: 1px 1px 0px var(--border-strong); }
+
+[data-style="retro-gazette"] h1, 
+[data-style="retro-gazette"] h2, 
+[data-style="retro-gazette"] h3, 
+[data-style="retro-gazette"] h4 {
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* ============================================
+   SKEUOMORPHISM MODE - Base Overrides
+   ============================================ */
+[data-style="skeuomorphism"] .btn-primary { border-radius: var(--radius-md); box-shadow: var(--shadow-md); }
+[data-style="skeuomorphism"] .btn-primary:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+[data-style="skeuomorphism"] .btn-primary:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+
+[data-style="skeuomorphism"] .btn-ghost { border-radius: var(--radius-md); box-shadow: var(--shadow-sm); }
+[data-style="skeuomorphism"] .btn-ghost:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+[data-style="skeuomorphism"] .btn-ghost:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+
+[data-style="skeuomorphism"] .icon-btn { border-radius: var(--radius-md); box-shadow: var(--shadow-sm); }
+[data-style="skeuomorphism"] .icon-btn:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+[data-style="skeuomorphism"] .icon-btn:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+
+[data-style="skeuomorphism"] .chip { border-radius: var(--radius-full); box-shadow: var(--shadow-sm); }
+
+[data-style="skeuomorphism"] .empty-state { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+[data-style="skeuomorphism"] .divider { background: var(--border); height: 1px; }
+[data-style="skeuomorphism"] .loader-ring { box-shadow: var(--shadow-sm); }
+
+/* ============================================
+   NEUMORPHISM MODE - Base Overrides
+   ============================================ */
+[data-style="neumorphism"] .btn-primary { border-radius: var(--radius-md); box-shadow: var(--shadow-md); border: none; }
+[data-style="neumorphism"] .btn-primary:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+[data-style="neumorphism"] .btn-primary:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+
+[data-style="neumorphism"] .btn-ghost { border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border: none; background: var(--bg); }
+[data-style="neumorphism"] .btn-ghost:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+[data-style="neumorphism"] .btn-ghost:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+
+[data-style="neumorphism"] .icon-btn { border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border: none; background: var(--bg); }
+[data-style="neumorphism"] .icon-btn:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+[data-style="neumorphism"] .icon-btn:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+
+[data-style="neumorphism"] .chip { border-radius: var(--radius-full); box-shadow: var(--shadow-sm); border: none; background: var(--bg); }
+[data-style="neumorphism"] .chip-easy { background: var(--label-easy); color: var(--bg); }
+[data-style="neumorphism"] .chip-medium { background: var(--label-medium); color: var(--bg); }
+[data-style="neumorphism"] .chip-hard { background: var(--label-hard); color: var(--bg); }
+
+[data-style="neumorphism"] .empty-state { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+[data-style="neumorphism"] .divider { background: transparent; height: 1px; box-shadow: 0 1px 0 rgba(255,255,255,0.05); }
+[data-style="neumorphism"] .loader-ring { box-shadow: var(--shadow-sm); border: none; }
 
 .empty-state .empty-icon { font-size: 2rem; color: var(--text-1); margin-bottom: var(--space-xs); }
 .empty-state h3 { font-size: 1rem; color: var(--text-1); font-weight: 700; }

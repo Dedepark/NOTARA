@@ -7,18 +7,20 @@ window.Notara.Tags = (() => {
   const db = () => window.Notara.db;
 
   const PRESET_COLORS = [
-    '#7c6af7', '#2dd4bf', '#ff6b6b', '#f5a623',
-    '#f472b6', '#84cc16', '#38bdf8', '#a78bfa',
-    '#fb923c', '#34d399', '#f87171', '#60a5fa',
+    '#7c3aed', '#0891b2', '#dc2626', '#d97706',
+    '#db2777', '#65a30d', '#2563eb', '#6d28d9',
+    '#ea580c', '#059669', '#e11d48', '#4f46e5',
   ];
 
   function getPresetColors() { return PRESET_COLORS; }
 
   /* ── Semua tag milik user ─────────────────── */
   async function getAll() {
+    const userId = window.Notara.Auth.getUser()?.id;
     const { data, error } = await db()
       .from('tags')
       .select('*')
+      .eq('user_id', userId)
       .order('name', { ascending: true });
     if (error) throw error;
     return data || [];
@@ -100,6 +102,7 @@ window.Notara.Tags = (() => {
 
   /* ── Ambil note-note yang punya tag tertentu ─ */
   async function getNotesByTag(tagId) {
+    const userId = window.Notara.Auth.getUser()?.id;
     const { data: refs, error: e1 } = await db()
       .from('note_tags')
       .select('note_id')
@@ -110,6 +113,7 @@ window.Notara.Tags = (() => {
     const { data: notes, error: e2 } = await db()
       .from('notes')
       .select('*')
+      .eq('user_id', userId)
       .in('id', noteIds)
       .is('deleted_at', null)
       .eq('hidden', false)

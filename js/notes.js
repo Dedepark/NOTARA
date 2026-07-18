@@ -81,9 +81,11 @@ window.Notara.Notes = (() => {
     // Return cache if fresh
     if (_cache && (Date.now() - _cacheTs) < _CACHE_TTL) return _cache;
 
+    const userId = window.Notara.Auth.getUser()?.id;
     const { data, error } = await db()
       .from('notes')
       .select('*')
+      .eq('user_id', userId)
       .eq('hidden', false)
       .is('deleted_at', null)
       .order('pinned', { ascending: false })
@@ -171,9 +173,11 @@ window.Notara.Notes = (() => {
 
   /* ── Trash: getTrash ─────────────────────── */
   async function getTrash() {
+    const userId = window.Notara.Auth.getUser()?.id;
     const { data, error } = await db()
       .from('notes')
       .select('*')
+      .eq('user_id', userId)
       .not('deleted_at', 'is', null)
       .order('deleted_at', { ascending: false });
     if (error) throw error;
@@ -248,9 +252,11 @@ window.Notara.Notes = (() => {
 
   /* ── search ──────────────────────────────── */
   async function search(query, filters = {}) {
+    const userId = window.Notara.Auth.getUser()?.id;
     let q = db()
       .from('notes')
       .select('*')
+      .eq('user_id', userId)
       .eq('hidden', false)
       .is('deleted_at', null)
       .order('pinned', { ascending: false })
@@ -300,9 +306,11 @@ window.Notara.Notes = (() => {
 
   /* ── count ───────────────────────────────── */
   async function count() {
+    const userId = window.Notara.Auth.getUser()?.id;
     const { count: c, error } = await db()
       .from('notes')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact' })
+      .eq('user_id', userId)
       .is('deleted_at', null);
     if (error) return 0;
     return c || 0;
@@ -310,9 +318,11 @@ window.Notara.Notes = (() => {
 
   /* ── trashCount ──────────────────────────── */
   async function trashCount() {
+    const userId = window.Notara.Auth.getUser()?.id;
     const { count: c, error } = await db()
       .from('notes')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact' })
+      .eq('user_id', userId)
       .not('deleted_at', 'is', null);
     if (error) return 0;
     return c || 0;
@@ -364,9 +374,9 @@ window.Notara.Notes = (() => {
     const note = await getById(id);
     if (!note) return;
     const deadlineHtml = note.deadline
-      ? `<div class="meta-extra"><i>⏳ Tenggat: ${new Date(note.deadline).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}</i></div>` : '';
+      ? `<div class="meta-extra"><i><svg width="12" height="12" viewBox="0 0 512 512" style="vertical-align:-1px"><path fill="currentColor" d="M256 0C141.1 0 48 93.1 48 208v224c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V224h128v208c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V208C464 93.1 370.9 0 256 0zM96 208V48c0-26.5 21.5-48 48-48s48 21.5 48 48v160H96z"/></svg> Tenggat: ${new Date(note.deadline).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}</i></div>` : '';
     const reminderHtml = note.reminderAt
-      ? `<div class="meta-extra"><i>🔔 Pengingat: ${new Date(note.reminderAt).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}</i></div>` : '';
+      ? `<div class="meta-extra"><i><svg width="12" height="12" viewBox="0 0 512 512" style="vertical-align:-1px"><path fill="currentColor" d="M224 0c-17.7 0-32 14.3-32 32V48H64C28.7 48 0 76.7 0 112v48l44.2 22.1c15.7 7.8 24 24.4 20.2 40.6l-4.7 20c16.3 11.3 34.8 18.7 55 21.5V288h256v-45.9c20.2-2.8 38.7-10.2 55-21.5l-4.7-20c-3.8-16.2 4.5-32.8 20.2-40.6L448 160v-48c0-35.3-28.7-64-64-64H320V32c0-17.7-14.3-32-32-32H224zM448 448H64c-35.3 0-64 28.7-64 64v32c0 17.7 14.3 32 32 32h448c17.7 0 32-14.3 32-32v-32c0-35.3-28.7-64-64-64z"/></svg> Pengingat: ${new Date(note.reminderAt).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}</i></div>` : '';
 
     const win = window.open('', '_blank');
     win.document.write(`<!DOCTYPE html><html><head>
@@ -416,6 +426,8 @@ window.Notara.Notes = (() => {
   function _emitChange() { _listeners.forEach(fn => fn()); }
   function onChange(fn)  { _listeners.push(fn); }
 
+  function resetCache() { _invalidateCache(); }
+
   return {
     getAll, getById, create, update, remove,
     getTrash, restore, permanentDelete, trashCount,
@@ -424,6 +436,6 @@ window.Notara.Notes = (() => {
     search, getPriorityNotes, getTimeline,
     saveVersion, getVersions,
     exportTxt, exportPdf, shareNote,
-    count, onChange,
+    count, onChange, resetCache,
   };
 })();

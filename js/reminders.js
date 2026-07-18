@@ -54,7 +54,7 @@ window.Notara.Reminders = (() => {
         return;
     }
     // Fallback PWA
-    const options = { body, tag: idStr.toString(), icon: './ikon.png', badge: './ikon.png', renotify: false };
+    const options = { body, tag: idStr.toString(), icon: './ikon-transparant.png', badge: './ikon-transparant.png', renotify: false };
     if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
       navigator.serviceWorker.ready.then(reg => {
         reg.showNotification(title, options);
@@ -353,7 +353,7 @@ window.Notara.Reminders = (() => {
           if (_selectedType === 'reminder') {
             reminderWrap.classList.remove('hidden');
             if (!hasPermission()) {
-              dtError.textContent = '💡 Aktifkan notifikasi di Pengaturan agar pengingat berfungsi.';
+              dtError.innerHTML = '<i class="fa-solid fa-lightbulb"></i> Aktifkan notifikasi di Pengaturan agar pengingat berfungsi.';
             }
           }
           confirmBtn.disabled = false;

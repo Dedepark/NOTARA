@@ -75,7 +75,7 @@ window.Notara.Auth = (() => {
         <div class="auth-card" id="auth-card">
 
           <div class="auth-logo">
-            <span class="logo-icon" aria-hidden="true">◈</span>
+            <img src="ikon-non-transparant.png" alt="" class="logo-icon" width="32" height="32" aria-hidden="true">
             <span class="logo-text">Notara</span>
           </div>
           <p class="auth-tagline">Catatan modern, tersimpan aman.</p>
