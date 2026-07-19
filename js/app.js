@@ -14,42 +14,33 @@ window.Notara = window.Notara || {};
 
   /* --- NOTE GROUPS --- */
   const db = () => window.Notara.db;
+  const _IDB = () => window.Notara.IDB;
+  const _uuid = () => crypto.randomUUID();
+  const _now = () => new Date().toISOString();
+
   async function _fetchGroups() {
     const userId = Au.getUser()?.id;
-    try {
-      const fetchPromise = db().from('note_groups').select('*').eq('user_id', userId).order('created_at', { ascending: true });
-      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000));
-      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
-      if (error) { console.warn('[Notara] fetchGroups error:', error.message); return []; }
-      return data || [];
-    } catch { return []; }
+    if (!userId) return [];
+    return (await _IDB().getAllByIndex('note_groups', 'user_id', userId)).sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
   }
   async function _createGroupInDb(name, noteIds) {
     const userId = Au.getUser()?.id;
-    const { data, error } = await db()
-      .from('note_groups')
-      .insert({ user_id: userId, name, note_ids: noteIds, collapsed: false })
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+    const group = { id: _uuid(), user_id: userId, name, note_ids: noteIds, collapsed: false, created_at: _now(), updated_at: _now() };
+    await _IDB().put('note_groups', group);
+    db().from('note_groups').insert({ id: group.id, user_id: userId, name, note_ids: noteIds, collapsed: false }).then(() => {}).catch(() => {});
+    return group;
   }
   async function _updateGroupInDb(id, changes) {
-    const { data, error } = await db()
-      .from('note_groups')
-      .update(changes)
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
+    const existing = await _IDB().get('note_groups', id);
+    if (!existing) throw new Error('Grup tidak ditemukan');
+    const updated = { ...existing, ...changes, updated_at: _now() };
+    await _IDB().put('note_groups', updated);
+    db().from('note_groups').update(changes).eq('id', id).then(() => {}).catch(() => {});
+    return updated;
   }
   async function _deleteGroupInDb(id) {
-    const { error } = await db()
-      .from('note_groups')
-      .delete()
-      .eq('id', id);
-    if (error) throw error;
+    await _IDB().del('note_groups', id);
+    db().from('note_groups').delete().eq('id', id).then(() => {}).catch(() => {});
     return true;
   }
 

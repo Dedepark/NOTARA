@@ -5,7 +5,7 @@ window.Notara = window.Notara || {};
 
 window.Notara.IDB = (() => {
   const DB_NAME = 'notara-offline-v1';
-  const DB_VERSION = 2;
+  const DB_VERSION = 3;
   let _db = null;
   let _ready = false;
 
@@ -17,6 +17,7 @@ window.Notara.IDB = (() => {
     finance_tx:   { keyPath: 'id', indexes: [{ name: 'user_id' }, { name: 'transaction_date' }] },
     finance_cat:  { keyPath: 'id', indexes: [{ name: 'user_id' }] },
     tags:         { keyPath: 'id', indexes: [{ name: 'user_id' }] },
+    note_groups:   { keyPath: 'id', indexes: [{ name: 'user_id' }] },
     note_tags:    { keyPath: null, indexes: [{ name: 'note_id' }, { name: 'tag_id' }] },
     sync_queue:   { keyPath: 'id', autoIncrement: true, indexes: [{ name: 'table' }, { name: 'synced' }] },
   };
@@ -37,7 +38,7 @@ window.Notara.IDB = (() => {
             (cfg.indexes || []).forEach(idx => {
               store.createIndex(idx.name, idx.name, { unique: false });
             });
-          } else if (e.oldVersion < 2) {
+          } else if (e.oldVersion < 3) {
             const tx = e.target.transaction;
             const store = tx.objectStore(name);
             (cfg.indexes || []).forEach(idx => {
