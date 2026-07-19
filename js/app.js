@@ -2049,16 +2049,6 @@ window.Notara = window.Notara || {};
       el.style.opacity = '0.45';
       el.title = 'Fitur ini memerlukan akun';
     });
-    if (!document.getElementById('guest-banner')) {
-      document.querySelectorAll('.nav-section-label').forEach(el => {
-        if (el.textContent === 'Lainnya') {
-          el.insertAdjacentHTML('afterend', '<div class="guest-banner" id="guest-banner"><i class="fa-solid fa-user-secret"></i><span>Mode Tamu — data tersimpan lokal</span><button class="btn-xs btn-accent" id="guest-login-btn">Masuk</button></div>');
-        }
-      });
-      setTimeout(() => {
-        document.getElementById('guest-login-btn')?.addEventListener('click', () => { Au.exitGuestMode(); window.Notara.Guest.clearGuestData(); Au.renderAuthPage(); });
-      }, 100);
-    }
   }
   if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
 

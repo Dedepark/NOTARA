@@ -138,6 +138,7 @@ window.Notara.Settings = (() => {
     const noteCount     = await window.Notara.Notes.count();
     const user          = window.Notara.Auth.getUser();
     const name          = window.Notara.Auth.getName();
+    const isGuest       = window.Notara.Auth.isGuest();
     
     // Evaluasi Izin
     const isNative = window.Capacitor?.isNativePlatform;
@@ -155,18 +156,28 @@ window.Notara.Settings = (() => {
           <div class="settings-card">
             <div class="settings-item">
               <div class="settings-item-left">
-                <span class="settings-item-label">${name}</span>
-                <span class="settings-item-sub">${user?.email || ''}</span>
+                <span class="settings-item-label">${isGuest ? 'Mode Tamu' : name}</span>
+                <span class="settings-item-sub">${isGuest ? 'Data tersimpan lokal di perangkat' : (user?.email || '')}</span>
               </div>
-              <i class="fa-solid fa-circle-user" style="font-size:1.8rem;color:var(--accent)"></i>
+              <i class="fa-solid ${isGuest ? 'fa-user-secret' : 'fa-circle-user'}" style="font-size:1.8rem;color:var(--accent)"></i>
             </div>
-            <div class="settings-item" style="cursor:pointer" id="setting-logout">
-              <div class="settings-item-left">
-                <span class="settings-item-label" style="color:var(--label-hard)">Keluar</span>
-                <span class="settings-item-sub">Keluar dari akun ini</span>
+            ${isGuest ? `
+              <div class="settings-item" style="cursor:pointer" id="setting-guest-login">
+                <div class="settings-item-left">
+                  <span class="settings-item-label" style="color:var(--accent)">Masuk / Daftar</span>
+                  <span class="settings-item-sub">Sinkron data ke cloud dan gunakan fitur online</span>
+                </div>
+                <i class="fa-solid fa-right-to-bracket" style="color:var(--accent)"></i>
               </div>
-              <i class="fa-solid fa-right-from-bracket" style="color:var(--label-hard)"></i>
-            </div>
+            ` : `
+              <div class="settings-item" style="cursor:pointer" id="setting-logout">
+                <div class="settings-item-left">
+                  <span class="settings-item-label" style="color:var(--label-hard)">Keluar</span>
+                  <span class="settings-item-sub">Keluar dari akun ini</span>
+                </div>
+                <i class="fa-solid fa-right-from-bracket" style="color:var(--label-hard)"></i>
+              </div>
+            `}
           </div>
         </div>
 
@@ -558,6 +569,12 @@ window.Notara.Settings = (() => {
         await window.Notara.Auth.logout();
         window.location.reload();
       }
+    });
+
+    document.getElementById('setting-guest-login')?.addEventListener('click', () => {
+      window.Notara.Auth.exitGuestMode();
+      window.Notara.Guest.clearGuestData();
+      window.Notara.Auth.renderAuthPage();
     });
 
     document.getElementById('setting-cs-report')?.addEventListener('click', () => {
