@@ -1,8 +1,9 @@
-/* js/finance.js — Finance Tracker Module (offline-first) */
+/* js/finance.js — Finance Tracker Module */
 'use strict';
 window.Notara = window.Notara || {};
 window.Notara.FinanceTracker = (() => {
-  const Data = () => window.Notara.Data;
+  const db   = () => window.Notara.db;
+  const Auth = () => window.Notara.Auth;
   const UI   = window.Notara.UI;
 
   function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
@@ -15,6 +16,10 @@ window.Notara.FinanceTracker = (() => {
     const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
     return `${months[month]} ${year}`;
   }
+
+  function _userId() { return Auth()?.getUser()?.id; }
+  function _uuid() { return crypto.randomUUID(); }
+  function _now()  { return new Date().toISOString(); }
 
   const CATEGORY_ICONS = {
     'Makanan': 'hamburger', 'Transportasi': 'bus', 'Belanja': 'shopping-cart',
@@ -32,11 +37,57 @@ window.Notara.FinanceTracker = (() => {
     'Investasi': '#4d96ff', 'Hadiah': '#ffd93d',
   };
 
-  /* ── Data operations ───────────────────── */
-  async function addTransaction(data)         { return Data().finance.addTransaction(data); }
-  async function removeTransaction(id)        { return Data().finance.removeTransaction(id); }
-  async function getByMonth(year, month)      { return Data().finance.getByMonth(year, month); }
-  async function getCategories()              { return Data().finance.getCategories(); }
+  async function addTransaction(data) {
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    const tx = {
+      id: _uuid(),
+      user_id: uid,
+      type: data.type,
+      category: data.category,
+      amount: data.amount,
+      description: data.description || null,
+      transaction_date: data.transaction_date || _now(),
+      created_at: _now(),
+      updated_at: _now(),
+    };
+    const { error } = await db().from('finance_transactions').insert(tx);
+    if (error) throw error;
+    return tx;
+  }
+
+  async function removeTransaction(id) {
+    const { error } = await db().from('finance_transactions').delete().eq('id', id);
+    if (error) throw error;
+  }
+
+  async function getByMonth(year, month) {
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const endMonth = month + 1 > 11 ? 0 : month + 1;
+    const endYear  = month + 1 > 11 ? year + 1 : year;
+    const endDate  = `${endYear}-${String(endMonth + 1).padStart(2, '0')}-01`;
+    const { data, error } = await db().from('finance_transactions')
+      .select('*')
+      .eq('user_id', uid)
+      .gte('transaction_date', startDate)
+      .lt('transaction_date', endDate)
+      .order('transaction_date', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function getCategories() {
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    const { data, error } = await db().from('finance_categories')
+      .select('*')
+      .eq('user_id', uid)
+      .order('sort_order', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
 
   async function getMonthlySummary(year, month) {
     const tx = await getByMonth(year, month);
@@ -51,7 +102,6 @@ window.Notara.FinanceTracker = (() => {
 
   let _currentYear, _currentMonth;
 
-  /* ── Page Render ── */
   async function renderPage() {
     const main = document.getElementById('app-main');
     UI.setTitle('Keuangan');

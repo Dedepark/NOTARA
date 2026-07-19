@@ -67,7 +67,7 @@ window.Notara.CSPanel = (() => {
         if (payload.new.sender === 'user') {
           db().from('cs_tickets').update({ cs_read: false }).eq('id', payload.new.ticket_id).then(function() {
             _updateCSTicketCard(payload.new.ticket_id);
-          });
+          }).catch(function() {});
         } else {
           _updateCSTicketCard(payload.new.ticket_id);
         }
@@ -316,14 +316,14 @@ window.Notara.CSPanel = (() => {
 
       db().from('cs_tickets').update({ cs_read: true }).eq('id', ticketId).then(function() {
         _updateCSTicketCard(ticketId);
-      });
+      }).catch(function() {});
 
       var result = await db().from('cs_messages').select('*').eq('ticket_id', ticketId).order('created_at', { ascending: true });
       if (result.error) throw result.error;
       var msgs = result.data;
       var userName = ticket.user_name || 'User';
 
-      await db().from('cs_tickets').update({ cs_replied: true }).eq('id', ticketId);
+      await db().from('cs_tickets').update({ cs_replied: true }).eq('id', ticketId).catch(() => {});
 
       var html =
         '<div class="cs-chat-head">' +
@@ -418,7 +418,7 @@ window.Notara.CSPanel = (() => {
           await db().from('cs_tickets').update({
             updated_at: new Date().toISOString(),
             user_read: false
-          }).eq('id', ticketId);
+          }).eq('id', ticketId).catch(() => {});
 
           input.value = '';
           input.style.height = 'auto';

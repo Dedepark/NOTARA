@@ -1,10 +1,11 @@
-/* js/notes.js — Note CRUD via Notara.Data (offline-first) */
+/* js/notes.js — Note CRUD via Supabase */
 'use strict';
 
 window.Notara = window.Notara || {};
 
 window.Notara.Notes = (() => {
-  const Data = () => window.Notara.Data;
+  const db = () => window.Notara.db;
+  const Auth = () => window.Notara.Auth;
 
   function _stripHtml(html) {
     const d = document.createElement('div');
@@ -18,84 +19,129 @@ window.Notara.Notes = (() => {
     return first.slice(0, 60) || 'Catatan baru';
   }
 
-  /* ── In-Memory Cache ───────────────────── */
-  let _cache   = null;
-  let _cacheTs = 0;
-  const _CACHE_TTL = 60_000;
+  function _uuid() { return crypto.randomUUID(); }
+  function _now()  { return new Date().toISOString(); }
+  function _userId() { return Auth()?.getUser()?.id; }
 
-  function _invalidateCache() { _cache = null; _cacheTs = 0; }
-  function _patchCache(id, updated) {
-    if (!_cache) return;
-    const idx = _cache.findIndex(n => n.id === id);
-    if (idx !== -1) _cache[idx] = updated;
-    else            _cache.unshift(updated);
-  }
-
-  /* ── getAll ────────────────────────────── */
   async function getAll() {
-    if (_cache && (Date.now() - _cacheTs) < _CACHE_TTL) return _cache;
-    let all = await Data().notes.getAll();
-    all = all.filter(n => !n.hidden);
-    all.sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1));
-    all.sort((a, b) => new Date(b.updated_at || b.updatedAt) - new Date(a.updated_at || a.updatedAt));
-    _cache   = all;
-    _cacheTs = Date.now();
-    return _cache;
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    const { data, error } = await db().from('notes')
+      .select('*')
+      .eq('user_id', uid)
+      .is('deleted_at', null)
+      .order('updated_at', { ascending: false });
+    if (error) throw error;
+    let notes = data || [];
+    notes.sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1));
+    return notes;
   }
 
-  /* ── getById ───────────────────────────── */
   async function getById(id) {
-    if (_cache) {
-      const hit = _cache.find(n => n.id === id);
-      if (hit) return hit;
-    }
-    return Data().notes.getById(id);
+    const { data, error } = await db().from('notes').select('*').eq('id', id);
+    if (error) throw error;
+    return data && data.length > 0 ? data[0] : null;
   }
 
-  /* ── create ────────────────────────────── */
   async function create(data = {}) {
-    const note = await Data().notes.create({
-      title:      data.title      || 'Catatan baru',
-      content:    data.content    || '',
-      label:      data.label      || 'medium',
-      pinned:     data.pinned     || false,
-      favorite:   data.favorite   || false,
-      deadline:   data.deadline   || null,
-      reminderAt: data.reminderAt || null,
-    });
-    _invalidateCache();
-    _emitChange();
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    const note = {
+      id: _uuid(),
+      user_id: uid,
+      title: data.title || 'Catatan baru',
+      content: data.content || '',
+      label: data.label || 'medium',
+      pinned: data.pinned || false,
+      favorite: data.favorite || false,
+      locked: false,
+      lock_pin: '',
+      hidden: false,
+    };
+    if (data.deadline)   note.deadline = data.deadline;
+    if (data.reminderAt) note.reminder_at = data.reminderAt;
+    const { error } = await db().from('notes').insert(note);
+    if (error) throw error;
     return note;
   }
 
-  /* ── update ────────────────────────────── */
   async function update(id, changes = {}) {
-    if (changes.content && !changes.title) {
-      const current = await getById(id);
-      if (current && (!current.title || current.title === 'Catatan baru')) {
-        changes.title = _smartTitle(changes.content);
-      }
-    }
-    const updated = await Data().notes.update(id, changes);
-    _patchCache(id, updated);
-    _emitChange();
-    return updated;
+    const updated = { ...changes, updated_at: _now() };
+    const { error } = await db().from('notes').update(updated).eq('id', id);
+    if (error) throw error;
+    return { ...(await getById(id)) };
   }
 
-  /* ── remove (soft delete) ─────────────── */
   async function remove(id) {
-    await Data().notes.remove(id);
-    if (_cache) _cache = _cache.filter(n => n.id !== id);
-    _emitChange();
-    return true;
+    return update(id, { deleted_at: _now() });
   }
 
-  /* ── Trash ─────────────────────────────── */
-  async function getTrash()      { return Data().notes.getTrash(); }
-  async function restore(id)     { _invalidateCache(); _emitChange(); return Data().notes.restore(id); }
-  async function permanentDelete(id) { _invalidateCache(); _emitChange(); return Data().notes.permanentDelete(id); }
+  async function getTrash() {
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    const { data, error } = await db().from('notes')
+      .select('*')
+      .eq('user_id', uid)
+      .not('deleted_at', 'is', null)
+      .order('updated_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }
 
-  /* ── pin / favorite / duplicate ────────── */
+  async function restore(id) {
+    return update(id, { deleted_at: null });
+  }
+
+  async function permanentDelete(id) {
+    const { error } = await db().from('notes').delete().eq('id', id);
+    if (error) throw error;
+  }
+
+  async function search(query, filters = {}) {
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    let queryBuilder = db().from('notes').select('*').eq('user_id', uid).is('deleted_at', null);
+    if (query) {
+      queryBuilder = queryBuilder.or(`title.ilike.%${query}%,content.ilike.%${query}%`);
+    }
+    if (filters.label) {
+      queryBuilder = queryBuilder.eq('label', filters.label);
+    }
+    if (filters.pinned) {
+      queryBuilder = queryBuilder.eq('pinned', true);
+    }
+    if (filters.favorite) {
+      queryBuilder = queryBuilder.eq('favorite', true);
+    }
+    const { data, error } = await queryBuilder.order('updated_at', { ascending: false });
+    if (error) throw error;
+    let notes = data || [];
+    notes = notes.filter(n => !n.hidden);
+    return notes;
+  }
+
+  async function count() {
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    const { count, error } = await db().from('notes')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', uid)
+      .is('deleted_at', null);
+    if (error) throw error;
+    return count || 0;
+  }
+
+  async function trashCount() {
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    const { count, error } = await db().from('notes')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', uid)
+      .not('deleted_at', 'is', null);
+    if (error) throw error;
+    return count || 0;
+  }
+
   async function pin(id) {
     const note = await getById(id);
     if (!note) return;
@@ -115,24 +161,15 @@ window.Notara.Notes = (() => {
   }
 
   async function setLabel(id, label)    { return update(id, { label }); }
-  async function lock(id, pin)          { return update(id, { locked: true, lockPin: pin }); }
-  async function unlock(id)             { return update(id, { locked: false, lockPin: '' }); }
+  async function lock(id, pin)          { return update(id, { locked: true, lock_pin: pin }); }
+  async function unlock(id)             { return update(id, { locked: false, lock_pin: '' }); }
   async function verifyPin(id, pin) {
     const note = await getById(id);
-    return note && note.lockPin === pin;
+    return note && note.lock_pin === pin;
   }
   async function setDeadline(id, isoString)   { return update(id, { deadline: isoString || null }); }
-  async function setReminderAt(id, isoString) { return update(id, { reminderAt: isoString || null }); }
+  async function setReminderAt(id, isoString) { return update(id, { reminder_at: isoString || null }); }
 
-  /* ── search ────────────────────────────── */
-  async function search(query, filters = {}) {
-    let results = await Data().notes.search(query, filters);
-    results = results.filter(n => !n.hidden);
-    results.sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1));
-    return results;
-  }
-
-  /* ── getPriorityNotes ──────────────────── */
   async function getPriorityNotes() {
     const all   = await getAll();
     const order = { hard: 0, medium: 1, easy: 2 };
@@ -142,12 +179,11 @@ window.Notara.Notes = (() => {
       .slice(0, 2);
   }
 
-  /* ── getTimeline ───────────────────────── */
   async function getTimeline() {
     const notes  = await getAll();
     const groups = {};
     notes.forEach(n => {
-      const d   = new Date(n.updated_at || n.updatedAt);
+      const d   = new Date(n.updated_at);
       const key = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
       if (!groups[key]) groups[key] = [];
       groups[key].push(n);
@@ -155,11 +191,6 @@ window.Notara.Notes = (() => {
     return groups;
   }
 
-  /* ── count / trashCount ────────────────── */
-  async function count()        { return Data().notes.count(); }
-  async function trashCount()   { return Data().notes.trashCount(); }
-
-  /* ── Note Versioning (localStorage) ────── */
   const MAX_VERSIONS = 10;
   function _versionKey(id) { return `notara_ver_${id}`; }
 
@@ -185,24 +216,22 @@ window.Notara.Notes = (() => {
     try { localStorage.removeItem(_versionKey(id)); } catch {}
   }
 
-  /* ── Export TXT ────────────────────────── */
   async function exportTxt(id) {
     const note = await getById(id);
     if (!note) return;
     let text = `${note.title}\n${'='.repeat(note.title.length)}\n\n${_stripHtml(note.content)}`;
     if (note.deadline)   text += `\n\n— Tenggat: ${new Date(note.deadline).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}`;
-    if (note.reminderAt) text += `\n— Pengingat: ${new Date(note.reminderAt).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}`;
+    if (note.reminder_at) text += `\n— Pengingat: ${new Date(note.reminder_at).toLocaleString('id-ID', { dateStyle: 'full', timeStyle: 'short' })}`;
     _download(note.title + '.txt', text, 'text/plain');
   }
 
-  /* ── Export PDF ────────────────────────── */
   async function exportPdf(id) {
     const note = await getById(id);
     if (!note) return;
     const deadlineHtml = note.deadline
       ? `<div class="meta-extra"><i><svg width="12" height="12" viewBox="0 0 512 512" style="vertical-align:-1px"><path fill="currentColor" d="M256 0C141.1 0 48 93.1 48 208v224c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V224h128v208c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V208C464 93.1 370.9 0 256 0zM96 208V48c0-26.5 21.5-48 48-48s48 21.5 48 48v160H96z"/></svg> Tenggat: ${new Date(note.deadline).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}</i></div>` : '';
-    const reminderHtml = note.reminderAt
-      ? `<div class="meta-extra"><i><svg width="12" height="12" viewBox="0 0 512 512" style="vertical-align:-1px"><path fill="currentColor" d="M224 0c-17.7 0-32 14.3-32 32V48H64C28.7 48 0 76.7 0 112v48l44.2 22.1c15.7 7.8 24 24.4 20.2 40.6l-4.7 20c16.3 11.3 34.8 18.7 55 21.5V288h256v-45.9c20.2-2.8 38.7-10.2 55-21.5l-4.7-20c-3.8-16.2 4.5-32.8 20.2-40.6L448 160v-48c0-35.3-28.7-64-64-64H320V32c0-17.7-14.3-32-32-32H224zM448 448H64c-35.3 0-64 28.7-64 64v32c0 17.7 14.3 32 32 32h448c17.7 0 32-14.3 32-32v-32c0-35.3-28.7-64-64-64z"/></svg> Pengingat: ${new Date(note.reminderAt).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}</i></div>` : '';
+    const reminderHtml = note.reminder_at
+      ? `<div class="meta-extra"><i><svg width="12" height="12" viewBox="0 0 512 512" style="vertical-align:-1px"><path fill="currentColor" d="M224 0c-17.7 0-32 14.3-32 32V48H64C28.7 48 0 76.7 0 112v48l44.2 22.1c15.7 7.8 24 24.4 20.2 40.6l-4.7 20c16.3 11.3 34.8 18.7 55 21.5V288h256v-45.9c20.2-2.8 38.7-10.2 55-21.5l-4.7-20c-3.8-16.2 4.5-32.8 20.2-40.6L448 160v-48c0-35.3-28.7-64-64-64H320V32c0-17.7-14.3-32-32-32H224zM448 448H64c-35.3 0-64 28.7-64 64v32c0 17.7 14.3 32 32 32h448c17.7 0 32-14.3 32-32v-32c0-35.3-28.7-64-64-64z"/></svg> Pengingat: ${new Date(note.reminder_at).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}</i></div>` : '';
     const win = window.open('', '_blank');
     win.document.write(`<!DOCTYPE html><html><head>
       <meta charset="UTF-8"><title>${note.title}</title>
@@ -214,7 +243,7 @@ window.Notara.Notes = (() => {
         @media print { body { margin: 0; } }
       </style></head><body>
       <h1>${note.title}</h1>
-      <div class="meta">Label: ${note.label} · ${new Date(note.updated_at || note.updatedAt).toLocaleDateString('id-ID', { dateStyle: 'long' })}</div>
+      <div class="meta">Label: ${note.label} · ${new Date(note.updated_at).toLocaleDateString('id-ID', { dateStyle: 'long' })}</div>
       ${deadlineHtml}${reminderHtml}
       ${note.content}
       </body></html>`);
@@ -223,7 +252,6 @@ window.Notara.Notes = (() => {
     setTimeout(() => { win.print(); win.close(); }, 500);
   }
 
-  /* ── Share ─────────────────────────────── */
   async function shareNote(id) {
     const note = await getById(id);
     if (!note) return;
@@ -240,11 +268,10 @@ window.Notara.Notes = (() => {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  /* ── Change listeners ──────────────────── */
   const _listeners = [];
   function _emitChange() { _listeners.forEach(fn => fn()); }
   function onChange(fn)  { _listeners.push(fn); }
-  function resetCache()  { _invalidateCache(); }
+  function resetCache()  { _emitChange(); }
 
   return {
     getAll, getById, create, update, remove,

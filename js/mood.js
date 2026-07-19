@@ -1,8 +1,9 @@
-/* js/mood.js — Mood Tracker Module (offline-first) */
+/* js/mood.js — Mood Tracker Module */
 'use strict';
 window.Notara = window.Notara || {};
 window.Notara.MoodTracker = (() => {
-  const Data = () => window.Notara.Data;
+  const db   = () => window.Notara.db;
+  const Auth = () => window.Notara.Auth;
   const UI   = window.Notara.UI;
 
   const MOODS = [
@@ -23,6 +24,9 @@ window.Notara.MoodTracker = (() => {
   ];
 
   function _today() { return new Date().toISOString().slice(0, 10); }
+  function _userId() { return Auth()?.getUser()?.id; }
+  function _uuid() { return crypto.randomUUID(); }
+  function _now()  { return new Date().toISOString(); }
 
   function _moodIcon(moodValue, filled) {
     const m = MOODS.find(x => x.value === moodValue);
@@ -40,12 +44,64 @@ window.Notara.MoodTracker = (() => {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  /* ── Data operations ────────────────────── */
-  async function getToday()    { return Data().mood.getToday(); }
-  async function getHistory(d) { return Data().mood.getHistory(d || 7); }
-  async function save(mood, triggers, note) { return Data().mood.save(mood, triggers, note); }
+  async function getToday() {
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    const today = _today();
+    const { data, error } = await db().from('mood_entries')
+      .select('*')
+      .eq('user_id', uid)
+      .eq('date', today);
+    if (error) throw error;
+    return data && data.length > 0 ? data[0] : null;
+  }
 
-  /* ── Page Render ── */
+  async function getHistory(days = 7) {
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    const sinceStr = since.toISOString().slice(0, 10);
+    const { data, error } = await db().from('mood_entries')
+      .select('*')
+      .eq('user_id', uid)
+      .gte('date', sinceStr)
+      .order('date', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function save(moodValue, triggers, note) {
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    const today = _today();
+    const existing = await getToday();
+    const entry = {
+      id: existing?.id || _uuid(),
+      user_id: uid,
+      date: today,
+      mood: moodValue,
+      triggers: triggers || [],
+      note: note || null,
+      created_at: existing?.created_at || _now(),
+      updated_at: _now(),
+    };
+    const { error } = await db().from('mood_entries').upsert(entry, { onConflict: 'user_id,date' });
+    if (error) throw error;
+    return entry;
+  }
+
+  async function remove() {
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    const today = _today();
+    const { error } = await db().from('mood_entries')
+      .delete()
+      .eq('user_id', uid)
+      .eq('date', today);
+    if (error) throw error;
+  }
+
   async function renderPage() {
     const main = document.getElementById('app-main');
     UI.setTitle('Mood Tracker');
@@ -145,7 +201,6 @@ window.Notara.MoodTracker = (() => {
     return html;
   }
 
-  /* ── Event Binding ── */
   function _bindFormEvents() {
     let selectedMood = null;
     const selectedTriggers = new Set();
@@ -220,7 +275,7 @@ window.Notara.MoodTracker = (() => {
       btn.disabled = true;
       btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i>';
       try {
-        await Data().mood.remove();
+        await remove();
         renderPage();
       } catch (err) {
         UI.toast('Gagal: ' + err.message, 'error');

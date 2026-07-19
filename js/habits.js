@@ -1,22 +1,141 @@
-/* js/habits.js — Habit Tracker Module (offline-first) */
+/* js/habits.js — Habit Tracker Module */
 'use strict';
 window.Notara = window.Notara || {};
 window.Notara.HabitTracker = (() => {
-  const Data = () => window.Notara.Data;
+  const db   = () => window.Notara.db;
+  const Auth = () => window.Notara.Auth;
   const UI   = window.Notara.UI;
 
   function _today() { return new Date().toISOString().slice(0, 10); }
   function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+  function _userId() { return Auth()?.getUser()?.id; }
+  function _uuid() { return crypto.randomUUID(); }
+  function _now()  { return new Date().toISOString(); }
 
-  /* ── Data operations ───────────────────── */
-  async function getAll()           { return Data().habits.getAll(); }
-  async function create(name)       { return Data().habits.create(name); }
-  async function update(id, ch)     { return Data().habits.update(id, ch); }
-  async function remove(id)         { return Data().habits.remove(id); }
-  async function getTodayLogs()     { return Data().habits.getTodayLogs(); }
-  async function toggle(habitId, d) { return Data().habits.toggleLog(habitId, d || _today()); }
-  async function getStreak(habitId) { return Data().habits.getStreak(habitId); }
-  async function getCompletionRate(habitId, days) { return Data().habits.getCompletionRate(habitId, days || 7); }
+  async function getAll() {
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    const { data, error } = await db().from('habit_lists')
+      .select('*')
+      .eq('user_id', uid)
+      .eq('active', true)
+      .order('sort_order', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function create(name) {
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    const existing = await getAll();
+    const habit = {
+      id: _uuid(),
+      user_id: uid,
+      name: name,
+      active: true,
+      sort_order: existing.length,
+      created_at: _now(),
+      updated_at: _now(),
+    };
+    const { error } = await db().from('habit_lists').insert(habit);
+    if (error) throw error;
+    return habit;
+  }
+
+  async function update(id, changes) {
+    const updated = { ...changes, updated_at: _now() };
+    const { error } = await db().from('habit_lists').update(updated).eq('id', id);
+    if (error) throw error;
+    return updated;
+  }
+
+  async function remove(id) {
+    return update(id, { active: false });
+  }
+
+  async function getTodayLogs() {
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    const today = _today();
+    const { data, error } = await db().from('habit_logs')
+      .select('*')
+      .eq('user_id', uid)
+      .eq('date', today);
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function toggleLog(habitId, date) {
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    const targetDate = date || _today();
+    const { data: existingRows, error: findErr } = await db().from('habit_logs')
+      .select('*')
+      .eq('habit_id', habitId)
+      .eq('date', targetDate);
+    if (findErr) throw findErr;
+    const existing = existingRows && existingRows.length > 0 ? existingRows[0] : null;
+
+    if (existing) {
+      const { data, error } = await db().from('habit_logs')
+        .update({ completed: !existing.completed, updated_at: _now() })
+        .eq('id', existing.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data;
+    } else {
+      const log = {
+        id: _uuid(),
+        habit_id: habitId,
+        user_id: uid,
+        date: targetDate,
+        completed: true,
+        created_at: _now(),
+        updated_at: _now(),
+      };
+      const { error } = await db().from('habit_logs').insert(log);
+      if (error) throw error;
+      return log;
+    }
+  }
+
+  async function getStreak(habitId) {
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    const { data, error } = await db().from('habit_logs')
+      .select('*')
+      .eq('habit_id', habitId)
+      .eq('completed', true)
+      .order('date', { ascending: false });
+    if (error) throw error;
+    const logs = data || [];
+    let streak = 0;
+    let check = new Date();
+    for (const log of logs) {
+      const logDate = log.date;
+      const checkStr = check.toISOString().slice(0, 10);
+      if (logDate === checkStr) { streak++; check.setDate(check.getDate() - 1); }
+      else if (logDate < checkStr) break;
+    }
+    return streak;
+  }
+
+  async function getCompletionRate(habitId, days = 7) {
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+    const sinceStr = since.toISOString().slice(0, 10);
+    const { data, error } = await db().from('habit_logs')
+      .select('*')
+      .eq('habit_id', habitId)
+      .gte('date', sinceStr);
+    if (error) throw error;
+    const logs = data || [];
+    const completed = logs.filter(l => l.completed).length;
+    return days > 0 ? Math.round((completed / days) * 100) : 0;
+  }
 
   const DEFAULTS = [
     'Minum Air 2L', 'Olahraga 30 Menit', 'Membaca 15 Menit',
@@ -31,7 +150,6 @@ window.Notara.HabitTracker = (() => {
     for (const name of DEFAULTS) { try { await create(name); } catch {} }
   }
 
-  /* ── Page Render ── */
   async function renderPage() {
     const main = document.getElementById('app-main');
     UI.setTitle('Kebiasaan');
@@ -88,7 +206,7 @@ window.Notara.HabitTracker = (() => {
         item.classList.toggle('completed');
 
         try {
-          await toggle(id);
+          await toggleLog(id);
           const freshLogs = await getTodayLogs();
           const done  = freshLogs.filter(l => l.completed).length;
           const total = habits.length;
@@ -195,5 +313,5 @@ window.Notara.HabitTracker = (() => {
     }, 60);
   }
 
-  return { renderPage, getAll, create, update, remove, toggle };
+  return { renderPage, getAll, create, update, remove, toggleLog };
 })();

@@ -1,51 +1,41 @@
-/* sw.js — Notara Service Worker v5 (force cache bust) */
+/* sw.js — Notara Service Worker v6 */
 'use strict';
 
-// ── Cache names ───────────────────────────────────────────────────────────────
-const CACHE_APP  = 'notara-app-v5';
+const CACHE_APP  = 'notara-app-v6';
 const CACHE_EXT  = 'notara-ext-v1';
 const CACHE_API  = 'notara-api-v1';
 
-// ── Install ──────────────────────────────────────────────────────────────────
 self.addEventListener('install', () => {
   self.skipWaiting();
 });
 
-// ── Activate ─────────────────────────────────────────────────────────────────
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
         keys
           .filter(k => k !== CACHE_APP && k !== CACHE_EXT && k !== CACHE_API)
-          .map(k => {
-            console.log('[SW] Menghapus cache lama:', k);
-            return caches.delete(k);
-          })
+          .map(k => caches.delete(k))
       ))
       .then(() => self.clients.claim())
   );
 });
 
-// ── Fetch handler ─────────────────────────────────────────────────────────────
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
 
   const url = new URL(e.request.url);
 
-  // ── Supabase REST API: network-first + cache fallback ───────────────────────
   if (url.hostname.includes('supabase.co') && url.pathname.includes('/rest/v1/')) {
     e.respondWith(networkFirst(e.request, CACHE_API));
     return;
   }
 
-  // ── Supabase Auth/Realtime: always network ──────────────────────────────────
   if (url.hostname.includes('supabase.co')) {
     e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
     return;
   }
 
-  // ── CDN fonts: cache-first ──────────────────────────────────────────────────
   if (
     url.hostname.includes('cdnjs.cloudflare.com') ||
     url.hostname.includes('fonts.googleapis.com') ||
@@ -55,22 +45,19 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // ── jsDelivr: network-first ─────────────────────────────────────────────────
   if (url.hostname.includes('jsdelivr.net')) {
     e.respondWith(networkFirst(e.request, CACHE_EXT));
     return;
   }
 
-  // ── App shell: network-first + offline fallback ─────────────────────────────
   if (url.origin === self.location.origin) {
     e.respondWith(networkFirst(e.request, CACHE_APP));
     return;
   }
 
-  e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+  e.respondWith(fetch(e.request));
 });
 
-// ── Network-first ─────────────────────────────────────────────────────────────
 async function networkFirst(request, cacheName) {
   try {
     const response = await fetch(request);
@@ -86,7 +73,7 @@ async function networkFirst(request, cacheName) {
       return new Response(
         `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8">
         <meta name="viewport" content="width=device-width,initial-scale=1">
-        <title>Notara — Offline</title>
+        <title>Notara</title>
         <style>
           body{font-family:sans-serif;display:flex;align-items:center;justify-content:center;
           height:100vh;margin:0;background:#0d0f14;color:#f0f2f8;text-align:center;flex-direction:column;gap:1rem}
@@ -95,8 +82,8 @@ async function networkFirst(request, cacheName) {
           border:none;border-radius:9999px;cursor:pointer;font-size:.9rem}
         </style></head><body>
         <div class="icon"><img src="ikon-transparant.png" alt="Notara" width="48" height="48"></div>
-        <h2>Notara — Offline</h2>
-        <p>Tidak ada koneksi internet. Data kamu tersimpan lokal di perangkat.</p>
+        <h2>Notara</h2>
+        <p>Koneksi internet diperlukan untuk menggunakan aplikasi ini.</p>
         <button onclick="location.reload()">Coba Lagi</button>
         </body></html>`,
         { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
@@ -106,7 +93,6 @@ async function networkFirst(request, cacheName) {
   }
 }
 
-// ── Cache-first ───────────────────────────────────────────────────────────────
 async function cacheFirst(request, cacheName) {
   const cached = await caches.match(request);
   if (cached) return cached;
@@ -122,7 +108,6 @@ async function cacheFirst(request, cacheName) {
   }
 }
 
-// ── Push notification ─────────────────────────────────────────────────────────
 self.addEventListener('push', e => {
   const data = e.data?.json() || { title: 'Notara', body: 'Pengingat catatan!' };
   e.waitUntil(
@@ -134,7 +119,6 @@ self.addEventListener('push', e => {
   );
 });
 
-// ── Pesan dari app ────────────────────────────────────────────────────────────
 self.addEventListener('message', e => {
   if (e.data === 'skipWaiting') self.skipWaiting();
 });

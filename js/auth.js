@@ -6,41 +6,15 @@ window.Notara = window.Notara || {};
 window.Notara.Auth = (() => {
   const db = () => window.Notara.db;
 
-  /* ── State session saat ini ─────────────── */
   let _session  = null;
   let _user     = null;
   let _onReadyCb = null;
-  let _isGuest  = false;
 
   function getUser()    { return _user; }
   function getSession() { return _session; }
   function getName()    { return _user?.user_metadata?.name || _user?.email?.split('@')[0] || 'Pengguna'; }
   function isLoggedIn() { return !!_session; }
-  function isGuest()    { return _isGuest; }
 
-  function _setGuestMode(val) {
-    _isGuest = val;
-    if (val) {
-      const Guest = window.Notara.Guest;
-      _user = { id: Guest?._getGuestId(), is_guest: true, user_metadata: { name: 'Tamu' } };
-      _session = { is_guest: true };
-    } else {
-      _user = null;
-      _session = null;
-      _isGuest = false;
-    }
-  }
-
-  function enterGuestMode() {
-    _setGuestMode(true);
-    if (_onReadyCb) _onReadyCb(false);
-  }
-
-  function exitGuestMode() {
-    _setGuestMode(false);
-  }
-
-  /* ── Init: cek session yang tersimpan ─────── */
   async function init(onReady) {
     _onReadyCb = onReady;
 
@@ -48,12 +22,7 @@ window.Notara.Auth = (() => {
     _session = data.session;
     _user    = data.session?.user || null;
 
-    // Listen untuk perubahan auth state
     db().auth.onAuthStateChange((_event, session) => {
-      if (_event === 'SIGNED_OUT' || _event === 'TOKEN_REFRESHED') {
-        // TOKEN_REFRESHED: session baru, update
-        // SIGNED_OUT: session expired/hapus
-      }
       _session = session;
       _user    = session?.user || null;
       if (_onReadyCb) _onReadyCb(isLoggedIn());
@@ -62,9 +31,7 @@ window.Notara.Auth = (() => {
     if (_onReadyCb) _onReadyCb(isLoggedIn());
   }
 
-  /* ── Register ────────────────────────────── */
   async function register(email, name, password) {
-    const wasGuest = window.Notara.Guest?.isGuestMode();
     const { data, error } = await db().auth.signUp({
       email,
       password,
@@ -83,35 +50,23 @@ window.Notara.Auth = (() => {
         _user    = loginData.session?.user || data.user;
       }
     }
-    if (_session && wasGuest && _user) {
-      try { await window.Notara.Data.sync.mergeGuestData(_user.id); } catch {}
-      window.Notara.Guest.clearGuestData();
-    }
     if (!_session) throw new Error('Registrasi berhasil tapi sesi tidak ditemukan. Coba login manual.');
   }
 
-  /* ── Login ───────────────────────────────── */
   async function login(email, password) {
-    const wasGuest = window.Notara.Guest?.isGuestMode();
     const { data, error } = await db().auth.signInWithPassword({ email, password });
     if (error) throw error;
     _session = data.session;
     _user    = data.user;
-    if (wasGuest && data.user) {
-      try { await window.Notara.Data.sync.mergeGuestData(data.user.id); } catch {}
-      window.Notara.Guest.clearGuestData();
-    }
     return data;
   }
 
-  /* ── Logout ──────────────────────────────── */
   async function logout() {
     await db().auth.signOut();
     _session = null;
     _user    = null;
   }
 
-  /* ── Render halaman auth ─────────────────── */
   function renderAuthPage() {
     document.body.innerHTML = `
       <div class="auth-page" id="auth-page">
@@ -123,13 +78,11 @@ window.Notara.Auth = (() => {
           </div>
           <p class="auth-tagline">Catatan modern, tersimpan aman.</p>
 
-          <!-- Tab switcher -->
           <div class="auth-tabs">
             <button class="auth-tab active" id="tab-login">Masuk</button>
             <button class="auth-tab" id="tab-register">Daftar</button>
           </div>
 
-          <!-- LOGIN FORM -->
           <form class="auth-form" id="form-login" novalidate>
             <div class="auth-field">
               <label class="auth-label">Email</label>
@@ -157,7 +110,6 @@ window.Notara.Auth = (() => {
             </button>
           </form>
 
-          <!-- REGISTER FORM (hidden default) -->
           <form class="auth-form hidden" id="form-register" novalidate>
             <div class="auth-field">
               <label class="auth-label">Nama Lengkap</label>
@@ -193,13 +145,6 @@ window.Notara.Auth = (() => {
             </button>
           </form>
 
-          <div class="auth-divider"><span>atau</span></div>
-          <button class="btn-ghost auth-guest-btn" id="auth-guest-btn">
-            <i class="fa-solid fa-user-secret"></i>
-            <span>Masuk sebagai Tamu</span>
-          </button>
-          <p class="auth-guest-hint">Data tersimpan lokal di perangkatmu</p>
-
         </div>
       </div>
     `;
@@ -213,7 +158,6 @@ window.Notara.Auth = (() => {
     const formLogin   = document.getElementById('form-login');
     const formReg     = document.getElementById('form-register');
 
-    // Tab switcher
     tabLogin.addEventListener('click', () => {
       tabLogin.classList.add('active');
       tabReg.classList.remove('active');
@@ -227,11 +171,9 @@ window.Notara.Auth = (() => {
       formLogin.classList.add('hidden');
     });
 
-    // Eye toggle - login
     _bindEye('login-eye', 'login-password');
     _bindEye('reg-eye', 'reg-password');
 
-    // Login submit
     formLogin.addEventListener('submit', async e => {
       e.preventDefault();
       const errEl  = document.getElementById('login-error');
@@ -245,7 +187,6 @@ window.Notara.Auth = (() => {
       errEl.textContent = '';
       try {
         await login(email, pass);
-        await _tryImportAfterAuth();
         if (_onReadyCb) _onReadyCb(isLoggedIn());
       } catch (err) {
         errEl.textContent = _translateError(err.message);
@@ -254,7 +195,6 @@ window.Notara.Auth = (() => {
       }
     });
 
-    // Register submit
     formReg.addEventListener('submit', async e => {
       e.preventDefault();
       const errEl  = document.getElementById('reg-error');
@@ -270,7 +210,6 @@ window.Notara.Auth = (() => {
       errEl.textContent = '';
       try {
         await register(email, name, pass);
-        await _tryImportAfterAuth();
         if (_onReadyCb) _onReadyCb(isLoggedIn());
       } catch (err) {
         errEl.textContent = _translateError(err.message);
@@ -278,16 +217,6 @@ window.Notara.Auth = (() => {
         _setLoading(submit, false);
       }
     });
-
-    // Guest button
-    const guestBtn = document.getElementById('auth-guest-btn');
-    if (guestBtn) {
-      guestBtn.addEventListener('click', () => {
-        window.Notara.Guest.enterGuestMode();
-        enterGuestMode();
-        if (_onReadyCb) _onReadyCb(false);
-      });
-    }
   }
 
   function _bindEye(btnId, inputId) {
@@ -302,14 +231,6 @@ window.Notara.Auth = (() => {
         icon.className = 'fa-solid fa-eye';
       }
     });
-  }
-
-  async function _tryImportAfterAuth() {
-    if (!window.Notara.Data.hasPendingExport()) return;
-    try {
-      await window.Notara.Data.importGuestData(_user.id);
-    } catch {}
-    window.Notara.Data.clearPendingExport();
   }
 
   function _setLoading(btn, loading) {
@@ -328,5 +249,5 @@ window.Notara.Auth = (() => {
     return msg;
   }
 
-  return { init, getUser, getSession, getName, isLoggedIn, isGuest, enterGuestMode, exitGuestMode, _setGuestMode, login, register, logout, renderAuthPage };
+  return { init, getUser, getSession, getName, isLoggedIn, login, register, logout, renderAuthPage };
 })();

@@ -14,33 +14,35 @@ window.Notara = window.Notara || {};
 
   /* --- NOTE GROUPS --- */
   const db = () => window.Notara.db;
-  const _IDB = () => window.Notara.IDB;
   const _uuid = () => crypto.randomUUID();
   const _now = () => new Date().toISOString();
 
   async function _fetchGroups() {
     const userId = Au.getUser()?.id;
     if (!userId) return [];
-    return (await _IDB().getAllByIndex('note_groups', 'user_id', userId)).sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+    const { data, error } = await db().from('note_groups').select('*').eq('user_id', userId).order('created_at', { ascending: true });
+    if (error) throw error;
+    return (data || []).map(g => ({ ...g, note_ids: g.note_ids || [] }));
   }
   async function _createGroupInDb(name, noteIds) {
     const userId = Au.getUser()?.id;
     const group = { id: _uuid(), user_id: userId, name, note_ids: noteIds, collapsed: false, created_at: _now(), updated_at: _now() };
-    await _IDB().put('note_groups', group);
-    db().from('note_groups').insert({ id: group.id, user_id: userId, name, note_ids: noteIds, collapsed: false }).then(() => {}).catch(() => {});
+    const { error } = await db().from('note_groups').insert({ id: group.id, user_id: userId, name, note_ids: noteIds, collapsed: false });
+    if (error) throw error;
     return group;
   }
   async function _updateGroupInDb(id, changes) {
-    const existing = await _IDB().get('note_groups', id);
-    if (!existing) throw new Error('Grup tidak ditemukan');
+    const { data: rows, error: fetchErr } = await db().from('note_groups').select('*').eq('id', id);
+    if (fetchErr || !rows || !rows.length) throw new Error('Grup tidak ditemukan');
+    const existing = rows[0];
     const updated = { ...existing, ...changes, updated_at: _now() };
-    await _IDB().put('note_groups', updated);
-    db().from('note_groups').update(changes).eq('id', id).then(() => {}).catch(() => {});
+    const { error } = await db().from('note_groups').update(changes).eq('id', id);
+    if (error) throw error;
     return updated;
   }
   async function _deleteGroupInDb(id) {
-    await _IDB().del('note_groups', id);
-    db().from('note_groups').delete().eq('id', id).then(() => {}).catch(() => {});
+    const { error } = await db().from('note_groups').delete().eq('id', id);
+    if (error) throw error;
     return true;
   }
 
@@ -1527,9 +1529,8 @@ window.Notara = window.Notara || {};
     const textarea = document.getElementById('new-post-textarea'); const submitBtn = document.getElementById('post-submit-btn');
     toggle?.addEventListener('click', () => { const show = card.style.display === 'none'; card.style.display = show ? 'block' : 'none'; if (show) textarea?.focus(); });
     textarea?.addEventListener('input', () => { const len = textarea.value.length; document.getElementById('post-char-count').textContent = `${len} / 500`; submitBtn.disabled = len < 1; });
-    submitBtn?.addEventListener('click', async () => {
+      submitBtn?.addEventListener('click', async () => {
       const content = textarea.value.trim(); if (!content) return;
-      if (Au.isGuest()) { UI.toast('Masuk dulu untuk mempublikasikan', 'warning'); return; }
       submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memuat...';
       try { await Pt.create(content); textarea.value = ''; document.getElementById('post-char-count').textContent = '0 / 500'; UI.toast('Berhasil dipublikasikan!', 'success'); _postPage = 0; await _loadFeed(true); } catch (err) { UI.toast('Gagal: ' + err.message, 'error'); }
       submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Publikasikan';
@@ -1572,7 +1573,6 @@ window.Notara = window.Notara || {};
     const isOwn = post.user_id === currentUserId;
     card.querySelector('.like-btn')?.addEventListener('click', async () => {
       const likeBtn = card.querySelector('.like-btn'); if (!likeBtn || likeBtn.disabled) return;
-      if (Au.isGuest()) { UI.toast('Masuk dulu untuk like', 'warning'); return; }
       const countEl = likeBtn.querySelector('.like-count'); const icon = likeBtn.querySelector('i'); const wasLiked = likeBtn.classList.contains('liked');
       likeBtn.disabled = true;
       if (wasLiked) { likeBtn.classList.remove('liked'); icon.className = 'fa-regular fa-heart'; if (countEl) countEl.textContent = Math.max(0, parseInt(countEl.textContent || '0') - 1); }
@@ -1623,7 +1623,6 @@ window.Notara = window.Notara || {};
       await loadComments();
       document.getElementById('comment-send')?.addEventListener('click', async () => {
         const text = input?.value.trim(); if (!text) return;
-        if (Au.isGuest()) { UI.toast('Masuk dulu untuk berkomentar', 'warning'); return; }
         input.value = '';
         try { await Pt.addComment(post.id, text); await loadComments(); listEl.scrollTop = listEl.scrollHeight; const commentBtn = document.querySelector(`.comment-btn[data-post-id="${post.id}"]`); if (commentBtn) { const span = commentBtn.querySelector('span'); if (span) { const current = parseInt(span.textContent) || 0; span.textContent = `${current + 1} komentar`; } } } catch (err) { UI.toast('Gagal kirim: ' + err.message, 'error'); }
       });
@@ -1926,7 +1925,6 @@ window.Notara = window.Notara || {};
             <button id="menu-btn" class="icon-btn menu-btn topbar-normal-item" aria-label="Buka menu"><i class="fa-solid fa-bars"></i></button>
             <div class="topbar-title topbar-normal-item" id="topbar-title" aria-live="polite">Beranda</div>
             <div class="topbar-actions topbar-normal-item">
-              <span class="offline-badge" id="offline-badge"><i class="fa-solid fa-wifi-slash"></i> Offline</span>
               <button id="pomo-toggle-btn" class="icon-btn" title="Pomodoro Timer" aria-label="Pomodoro timer"><i class="fa-solid fa-clock"></i></button>
               <button id="shortcut-help-btn" class="icon-btn" title="Keyboard Shortcuts (?)" aria-label="Bantuan shortcut"><i class="fa-solid fa-keyboard"></i></button>
               <button id="theme-toggle" class="icon-btn" title="Ganti tema" aria-label="Ganti tema"><i class="fa-solid fa-circle-half-stroke"></i></button>
@@ -1974,7 +1972,6 @@ window.Notara = window.Notara || {};
 
     _initKeyboardShortcuts();
     _initPomodoro();
-    _initOfflineListener();
     if (window.Notara.CSPanel) window.Notara.CSPanel.initShortcutListener();
 
     R.on('home',     () => { UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); _renderHome(); });
@@ -2013,19 +2010,7 @@ window.Notara = window.Notara || {};
       let _swRefreshing = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => { if (_swRefreshing) return; _swRefreshing = true; window.location.reload(); });
     }
-    R.init(); UI.updateStorageIndicator(); _initSwipeGesture(); _initOnlineSync();
-  }
-
-  function _initOfflineListener() {
-    const badge = document.getElementById('offline-badge');
-    const update = () => { if (badge) badge.classList.toggle('visible', !navigator.onLine); };
-    window.addEventListener('online', () => { update(); window.Notara.Data.sync.full().catch(() => {}); });
-    window.addEventListener('offline', update);
-    update();
-  }
-
-  function _initOnlineSync() {
-    setInterval(() => { if (navigator.onLine && window.Notara.Auth?.isLoggedIn()) window.Notara.Data.sync.full().catch(() => {}); }, 30000);
+    R.init(); UI.updateStorageIndicator(); _initSwipeGesture();
   }
 
   function _initSwipeGesture() {
@@ -2034,15 +2019,29 @@ window.Notara = window.Notara || {};
     main?.addEventListener('touchend', e => { const dx = e.changedTouches[0].clientX - startX; if (dx > 80 && startX < 50) R.back(); }, { passive: true });
   }
 
-  let _appMounted = false;
-  async function init() { S.init(); await window.Notara.IDB.init(); await Au.init(loggedIn => { if (loggedIn || Au.isGuest()) { _resetAppState(); if (window.location.hash && window.location.hash !== '#home') window.location.hash = 'home'; _appMounted = true; _mountApp(); if (Au.isGuest()) _applyGuestMode(); window.Notara.Data.sync.full().catch(() => {}); } else { _appMounted = false; _resetAppState(); if (window.Notara.UpdateChecker) window.Notara.UpdateChecker.stopRealtime(); Au.renderAuthPage(); } }); }
+  window.Notara._reRenderHome   = _renderHome;
+  window.Notara._reRenderSearch = _renderSearch;
+  window.Notara._reRenderRead   = _renderRead;
+  window.Notara._reRenderTags   = _renderTags;
 
-  function _applyGuestMode() {
-    document.querySelectorAll('.nav-item[data-page="posts"], .nav-item[data-page="messages"]').forEach(el => {
-      el.style.opacity = '0.45';
-      el.title = 'Fitur ini memerlukan akun';
-    });
-  }
+  window.Notara._buildNoteCard        = _buildNoteCard;
+  window.Notara._bindNoteCards        = _bindNoteCards;
+  window.Notara._buildGroupCard       = _buildGroupCard;
+  window.Notara._bindGroupCardEvents  = _bindGroupCardEvents;
+  window.Notara._buildFlipcard        = _buildFlipcard;
+  window.Notara._bindFlipcards        = _bindFlipcards;
+  window.Notara._buildTagRow          = _buildTagRow;
+  window.Notara._bindTagRows          = _bindTagRows;
+  window.Notara._esc                  = _esc;
+  window.Notara._fetchGroups          = _fetchGroups;
+
+  Object.defineProperty(window.Notara, '_homeCache', {
+    get() { return _homeCache; },
+    set(v) { _homeCache = v; },
+  });
+
+  let _appMounted = false;
+  async function init() { S.init(); await Au.init(loggedIn => { if (loggedIn) { window.Notara.Realtime.enable(); window.Notara.Realtime.subscribe(); if (!_appMounted) { _appMounted = true; _resetAppState(); if (window.location.hash && window.location.hash !== '#home') window.location.hash = 'home'; _mountApp(); } } else { window.Notara.Realtime.unsubscribe(); _appMounted = false; _resetAppState(); if (window.Notara.UpdateChecker) window.Notara.UpdateChecker.stopRealtime(); Au.renderAuthPage(); } }); }
   if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
 
   console.log('%c ____  _   _    _    _   _ _____ __  __    _    _   _ ', 'color:#7B2D8E;font-weight:bold');

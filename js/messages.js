@@ -126,7 +126,7 @@ window.Notara.Messages = (() => {
         db().from('cs_tickets').update({ user_read: false }).eq('id', ticketId).then(function() {
           _updateTicketCard(ticketId);
           _updateNavBadge();
-        });
+        }).catch(function() {});
       })
       .subscribe();
   }
@@ -238,7 +238,7 @@ window.Notara.Messages = (() => {
 
     if (!ticket) { R.go('messages'); return; }
 
-    await db().from('cs_tickets').update({ user_read: true }).eq('id', ticketId);
+    await db().from('cs_tickets').update({ user_read: true }).eq('id', ticketId).catch(() => {});
 
     var messagesHtml = '';
     if (msgs && msgs.length) {
@@ -330,7 +330,6 @@ window.Notara.Messages = (() => {
         var errEl = document.getElementById('cs-report-error');
         var btn = document.getElementById('cs-report-submit');
 
-        if (window.Notara.Auth.isGuest()) { errEl.textContent = 'Masuk dulu untuk mengirim laporan.'; return; }
         if (!subject) { errEl.textContent = 'Judul wajib diisi.'; return; }
         if (!content) { errEl.textContent = 'Pesan wajib diisi.'; return; }
 
@@ -341,12 +340,12 @@ window.Notara.Messages = (() => {
           var userId = Auth.getUser().id;
           var userName = Auth.getName();
 
-          var ticketResult = await db().from('cs_tickets').insert({
+          var insertData = {
             user_id: userId,
-            subject: subject,
-            user_name: userName,
-            cs_replied: false
-          }).select().single();
+            subject: subject
+          };
+          if (userName) insertData.user_name = userName;
+          var ticketResult = await db().from('cs_tickets').insert(insertData).select().single();
 
           if (ticketResult.error) throw ticketResult.error;
 
