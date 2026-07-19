@@ -16,13 +16,13 @@ window.Notara = window.Notara || {};
   const db = () => window.Notara.db;
   async function _fetchGroups() {
     const userId = Au.getUser()?.id;
-    const { data, error } = await db()
-      .from('note_groups')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: true });
-    if (error) { console.warn('[Notara] fetchGroups error:', error.message); return []; }
-    return data || [];
+    try {
+      const fetchPromise = db().from('note_groups').select('*').eq('user_id', userId).order('created_at', { ascending: true });
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000));
+      const { data, error } = await Promise.race([fetchPromise, timeoutPromise]);
+      if (error) { console.warn('[Notara] fetchGroups error:', error.message); return []; }
+      return data || [];
+    } catch { return []; }
   }
   async function _createGroupInDb(name, noteIds) {
     const userId = Au.getUser()?.id;
@@ -704,14 +704,19 @@ window.Notara = window.Notara || {};
     UI.setActiveNav('home');
     if (_homeCache) { _renderHomeContent(main, _homeCache); } else { main.innerHTML = `<div class="page-loading"><div class="loader-ring"></div></div>`; }
     try {
-      const [allNotes, groups] = await Promise.all([N.getAll().catch(() => []), _fetchGroups().catch(() => ({}))]);
-      const priority = await N.getPriorityNotes().catch(() => []);
-      const allIds   = allNotes.map(n => n.id);
-      const tagsMap  = allIds.length ? await Tg.getTagsForNotes(allIds).catch(() => ({})) : {};
-      if (window.Notara.Activity) {
-        const actRows = await window.Notara.Activity.getAll().catch(() => []);
-        _activityMap = window.Notara.Activity.toMap(actRows);
-      }
+      const homeTimeout = new Promise(resolve => setTimeout(() => resolve({ allNotes: [], groups: [], priority: [], tagsMap: {} }), 10000));
+      const homeFetch = (async () => {
+        const [allNotes, groups] = await Promise.all([N.getAll().catch(() => []), _fetchGroups()]);
+        const priority = await N.getPriorityNotes().catch(() => []);
+        const allIds   = allNotes.map(n => n.id);
+        const tagsMap  = allIds.length ? await Tg.getTagsForNotes(allIds).catch(() => ({})) : {};
+        if (window.Notara.Activity) {
+          const actRows = await window.Notara.Activity.getAll().catch(() => []);
+          _activityMap = window.Notara.Activity.toMap(actRows);
+        }
+        return { allNotes, priority, groups, tagsMap };
+      })();
+      const { allNotes, priority, groups, tagsMap } = await Promise.race([homeFetch, homeTimeout]);
       const newCache = { allNotes, priority, groups, tagsMap };
       const dataChanged = !_homeCache
         || allNotes.length !== _homeCache.allNotes.length
