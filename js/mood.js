@@ -1,10 +1,9 @@
-/* js/mood.js — Mood Tracker Module */
+/* js/mood.js — Mood Tracker Module (offline-first) */
 'use strict';
 window.Notara = window.Notara || {};
 window.Notara.MoodTracker = (() => {
-  const db = () => window.Notara.db;
-  const UI = window.Notara.UI;
-  const Au = window.Notara.Auth;
+  const Data = () => window.Notara.Data;
+  const UI   = window.Notara.UI;
 
   const MOODS = [
     { value: 'very_happy', icon: 'ph-smiley-wink',  label: 'Hebat',  color: 'green' },
@@ -23,15 +22,12 @@ window.Notara.MoodTracker = (() => {
     { value: 'Lainnya', icon: 'ph-dots-three', color: '#6b7280' },
   ];
 
-  function _userId() { return Au.getUser()?.id; }
   function _today() { return new Date().toISOString().slice(0, 10); }
 
   function _moodIcon(moodValue, filled) {
     const m = MOODS.find(x => x.value === moodValue);
     if (!m) return '<i class="ph ph-question"></i>';
-    return filled
-      ? `<i class="ph-fill ${m.icon}"></i>`
-      : `<i class="ph ${m.icon}"></i>`;
+    return filled ? `<i class="ph-fill ${m.icon}"></i>` : `<i class="ph ${m.icon}"></i>`;
   }
 
   function _moodLabel(moodValue) {
@@ -44,56 +40,10 @@ window.Notara.MoodTracker = (() => {
     return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
-  /* ── Supabase CRUD ── */
-  async function getToday(userId) {
-    const uid = userId || _userId();
-    if (!uid) return null;
-    const { data, error } = await db()
-      .from('mood_entries')
-      .select('*')
-      .eq('user_id', uid)
-      .eq('date', _today())
-      .maybeSingle();
-    if (error) { console.warn('[Mood] getToday error:', error.message); return null; }
-    return data || null;
-  }
-
-  async function getHistory(userId, days = 7) {
-    const uid = userId || _userId();
-    if (!uid) return [];
-    const start = new Date();
-    start.setDate(start.getDate() - days + 1);
-    const startStr = start.toISOString().slice(0, 10);
-    const { data, error } = await db()
-      .from('mood_entries')
-      .select('*')
-      .eq('user_id', uid)
-      .gte('date', startStr)
-      .lte('date', _today())
-      .order('date', { ascending: true });
-    if (error) { console.warn('[Mood] getHistory error:', error.message); return []; }
-    return data || [];
-  }
-
-  async function save(userId, mood, triggers, note) {
-    const uid = userId || _userId();
-    if (!uid) throw new Error('User not logged in');
-    const today = _today();
-    const { data, error } = await db()
-      .from('mood_entries')
-      .upsert({
-        user_id: uid,
-        date: today,
-        mood: mood,
-        triggers: triggers || [],
-        note: note || '',
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,date' })
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
-  }
+  /* ── Data operations ────────────────────── */
+  async function getToday()    { return Data().mood.getToday(); }
+  async function getHistory(d) { return Data().mood.getHistory(d || 7); }
+  async function save(mood, triggers, note) { return Data().mood.save(mood, triggers, note); }
 
   /* ── Page Render ── */
   async function renderPage() {
@@ -103,24 +53,16 @@ window.Notara.MoodTracker = (() => {
     main.innerHTML = `<div class="page-loading"><div class="loader-ring"></div></div>`;
 
     const todayMood = await getToday();
-    const history = await getHistory();
+    const history   = await getHistory();
 
     let html = '<div class="tracker-page page-enter">';
     html += `<div class="tracker-header"><h2><i class="ph ph-smiley"></i> Mood Tracker</h2></div>`;
-
-    if (todayMood) {
-      html += _renderSummary(todayMood);
-    } else {
-      html += _renderForm();
-    }
-
+    if (todayMood) { html += _renderSummary(todayMood); } else { html += _renderForm(); }
     html += _renderHistory(history);
     html += '</div>';
     main.innerHTML = html;
 
-    if (!todayMood) {
-      _bindFormEvents();
-    }
+    if (!todayMood) _bindFormEvents();
     _bindChangeBtn();
   }
 
@@ -164,28 +106,22 @@ window.Notara.MoodTracker = (() => {
 
     if (mood.triggers && mood.triggers.length > 0) {
       html += `<div class="mood-summary-triggers">`;
-      mood.triggers.forEach(t => {
-        html += `<span class="mood-summary-trigger">${_esc(t)}</span>`;
-      });
+      mood.triggers.forEach(t => { html += `<span class="mood-summary-trigger">${_esc(t)}</span>`; });
       html += `</div>`;
     }
-
-    if (mood.note) {
-      html += `<div class="mood-summary-note">${_esc(mood.note)}</div>`;
-    }
+    if (mood.note) { html += `<div class="mood-summary-note">${_esc(mood.note)}</div>`; }
 
     html += `<div style="margin-top:var(--space-md)"><button class="btn-ghost" id="mood-change-btn"><i class="ph ph-pen"></i> Ubah Mood</button></div>`;
     html += `</div>`;
-
     return html;
   }
 
   function _renderHistory(history) {
     const days = [];
     for (let i = 6; i >= 0; i--) {
-      const d = new Date();
+      const d    = new Date();
       d.setDate(d.getDate() - i);
-      const iso = d.toISOString().slice(0, 10);
+      const iso  = d.toISOString().slice(0, 10);
       const entry = history.find(h => h.date === iso);
       const label = d.toLocaleDateString('id-ID', { weekday: 'short' });
       days.push({ iso, label, entry });
@@ -206,7 +142,6 @@ window.Notara.MoodTracker = (() => {
       html += `</div>`;
     });
     html += `</div></div>`;
-
     return html;
   }
 
@@ -268,7 +203,7 @@ window.Notara.MoodTracker = (() => {
       btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Menyimpan...';
       try {
         const note = document.getElementById('mood-note')?.value?.trim() || '';
-        await save(null, selectedMood, [...selectedTriggers], note);
+        await save(selectedMood, [...selectedTriggers], note);
         UI.toast('Mood tersimpan!', 'success');
         renderPage();
       } catch (err) {
@@ -281,14 +216,11 @@ window.Notara.MoodTracker = (() => {
 
   function _bindChangeBtn() {
     document.getElementById('mood-change-btn')?.addEventListener('click', async () => {
-      const uid = _userId();
-      if (!uid) { UI.toast('Login dulu', 'warning'); return; }
       const btn = document.getElementById('mood-change-btn');
       btn.disabled = true;
       btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i>';
       try {
-        const { error } = await db().from('mood_entries').delete().eq('user_id', uid).eq('date', _today());
-        if (error) throw error;
+        await Data().mood.remove();
         renderPage();
       } catch (err) {
         UI.toast('Gagal: ' + err.message, 'error');

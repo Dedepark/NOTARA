@@ -1930,6 +1930,7 @@ window.Notara = window.Notara || {};
             <button id="menu-btn" class="icon-btn menu-btn topbar-normal-item" aria-label="Buka menu"><i class="fa-solid fa-bars"></i></button>
             <div class="topbar-title topbar-normal-item" id="topbar-title" aria-live="polite">Beranda</div>
             <div class="topbar-actions topbar-normal-item">
+              <span class="offline-badge" id="offline-badge"><i class="fa-solid fa-wifi-slash"></i> Offline</span>
               <button id="pomo-toggle-btn" class="icon-btn" title="Pomodoro Timer" aria-label="Pomodoro timer"><i class="fa-solid fa-clock"></i></button>
               <button id="shortcut-help-btn" class="icon-btn" title="Keyboard Shortcuts (?)" aria-label="Bantuan shortcut"><i class="fa-solid fa-keyboard"></i></button>
               <button id="theme-toggle" class="icon-btn" title="Ganti tema" aria-label="Ganti tema"><i class="fa-solid fa-circle-half-stroke"></i></button>
@@ -1977,6 +1978,7 @@ window.Notara = window.Notara || {};
 
     _initKeyboardShortcuts();
     _initPomodoro();
+    _initOfflineListener();
     if (window.Notara.CSPanel) window.Notara.CSPanel.initShortcutListener();
 
     R.on('home',     () => { UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); _renderHome(); });
@@ -2015,7 +2017,19 @@ window.Notara = window.Notara || {};
       let _swRefreshing = false;
       navigator.serviceWorker.addEventListener('controllerchange', () => { if (_swRefreshing) return; _swRefreshing = true; window.location.reload(); });
     }
-    R.init(); UI.updateStorageIndicator(); _initSwipeGesture();
+    R.init(); UI.updateStorageIndicator(); _initSwipeGesture(); _initOnlineSync();
+  }
+
+  function _initOfflineListener() {
+    const badge = document.getElementById('offline-badge');
+    const update = () => { if (badge) badge.classList.toggle('visible', !navigator.onLine); };
+    window.addEventListener('online', () => { update(); window.Notara.Data.sync.full().catch(() => {}); });
+    window.addEventListener('offline', update);
+    update();
+  }
+
+  function _initOnlineSync() {
+    setInterval(() => { if (navigator.onLine && window.Notara.Auth?.isLoggedIn()) window.Notara.Data.sync.full().catch(() => {}); }, 30000);
   }
 
   function _initSwipeGesture() {
@@ -2025,7 +2039,22 @@ window.Notara = window.Notara || {};
   }
 
   let _appMounted = false;
-  async function init() { S.init(); await Au.init(loggedIn => { if (loggedIn) { _resetAppState(); if (!_appMounted) { _appMounted = true; _mountApp(); } } else { _appMounted = false; _resetAppState(); if (window.Notara.UpdateChecker) window.Notara.UpdateChecker.stopRealtime(); Au.renderAuthPage(); } }); }
+  async function init() { S.init(); await window.Notara.IDB.init(); await Au.init(loggedIn => { if (loggedIn || Au.isGuest()) { _resetAppState(); if (!_appMounted) { _appMounted = true; _mountApp(); } if (Au.isGuest()) _applyGuestMode(); window.Notara.Data.sync.full().catch(() => {}); } else { _appMounted = false; _resetAppState(); if (window.Notara.UpdateChecker) window.Notara.UpdateChecker.stopRealtime(); Au.renderAuthPage(); } }); }
+
+  function _applyGuestMode() {
+    document.querySelectorAll('.nav-item[data-page="posts"], .nav-item[data-page="messages"]').forEach(el => {
+      el.style.opacity = '0.45';
+      el.title = 'Fitur ini memerlukan akun';
+    });
+    document.querySelectorAll('.nav-section-label').forEach(el => {
+      if (el.textContent === 'Lainnya') {
+        el.insertAdjacentHTML('afterend', '<div class="guest-banner" id="guest-banner"><i class="fa-solid fa-user-secret"></i><span>Mode Tamu — data tersimpan lokal</span><button class="btn-xs btn-accent" id="guest-login-btn">Masuk</button></div>');
+      }
+    });
+    setTimeout(() => {
+      document.getElementById('guest-login-btn')?.addEventListener('click', () => { Au.exitGuestMode(); window.Notara.Guest.clearGuestData(); Au.renderAuthPage(); });
+    }, 100);
+  }
   if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
 
   console.log('%c ____  _   _    _    _   _ _____ __  __    _    _   _ ', 'color:#7B2D8E;font-weight:bold');

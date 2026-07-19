@@ -1,52 +1,51 @@
-/* sw.js — Notara Service Worker v3 */
+/* sw.js — Notara Service Worker v4 (offline-first) */
 'use strict';
 
 // ── Cache names ───────────────────────────────────────────────────────────────
-// CACHE_APP  : app shell (HTML/JS/CSS) — network-first, cache as fallback
-// CACHE_EXT  : Font Awesome + Google Fonts — cache-first (stable CDN assets)
-// Nama CACHE_APP tidak perlu diubah manual; network-first selalu ambil yang terbaru.
-const CACHE_APP  = 'notara-app-v3';
-const CACHE_EXT  = 'notara-ext-v1'; // pisah supaya font tidak ikut terhapus saat app update
+const CACHE_APP  = 'notara-app-v4';
+const CACHE_EXT  = 'notara-ext-v1';
+const CACHE_API  = 'notara-api-v1';
 
-// ── Install: skip waiting segera, jangan pre-cache ───────────────────────────
-// Pre-caching dihapus. Kita cache secara runtime (saat pertama kali diminta).
-// Ini mencegah install gagal karena satu asset tidak bisa diambil.
+// ── Install ──────────────────────────────────────────────────────────────────
 self.addEventListener('install', () => {
-  self.skipWaiting(); // langsung ambil kendali tanpa tunggu tab lama tutup
+  self.skipWaiting();
 });
 
-// ── Activate: hapus cache lama, klaim semua klien ────────────────────────────
+// ── Activate ─────────────────────────────────────────────────────────────────
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys()
       .then(keys => Promise.all(
         keys
-          .filter(k => k !== CACHE_APP && k !== CACHE_EXT)
+          .filter(k => k !== CACHE_APP && k !== CACHE_EXT && k !== CACHE_API)
           .map(k => {
             console.log('[SW] Menghapus cache lama:', k);
             return caches.delete(k);
           })
       ))
-      .then(() => self.clients.claim()) // ambil kendali semua tab yang terbuka
+      .then(() => self.clients.claim())
   );
 });
 
 // ── Fetch handler ─────────────────────────────────────────────────────────────
 self.addEventListener('fetch', e => {
-  // Abaikan non-GET
   if (e.request.method !== 'GET') return;
 
   const url = new URL(e.request.url);
 
-  // ── 1. Supabase: SELALU network, jangan pernah cache ────────────────────────
-  if (url.hostname.includes('supabase.co')) {
-    e.respondWith(fetch(e.request));
+  // ── Supabase REST API: network-first + cache fallback ───────────────────────
+  if (url.hostname.includes('supabase.co') && url.pathname.includes('/rest/v1/')) {
+    e.respondWith(networkFirst(e.request, CACHE_API));
     return;
   }
 
-  // ── 2. Font Awesome (cdnjs) + Google Fonts: cache-first ─────────────────────
-  // Ini yang menyebabkan ikon hilang. Kita cache FA CSS dan file font-nya
-  // di CACHE_EXT supaya tersedia offline dan tidak bergantung network tiap load.
+  // ── Supabase Auth/Realtime: always network ──────────────────────────────────
+  if (url.hostname.includes('supabase.co')) {
+    e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
+    return;
+  }
+
+  // ── CDN fonts: cache-first ──────────────────────────────────────────────────
   if (
     url.hostname.includes('cdnjs.cloudflare.com') ||
     url.hostname.includes('fonts.googleapis.com') ||
@@ -56,39 +55,33 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // ── 3. Supabase JS dari jsDelivr: network-first ──────────────────────────────
+  // ── jsDelivr: network-first ─────────────────────────────────────────────────
   if (url.hostname.includes('jsdelivr.net')) {
     e.respondWith(networkFirst(e.request, CACHE_EXT));
     return;
   }
 
-  // ── 4. App shell lokal (HTML/JS/CSS/manifest): network-first ────────────────
-  // Network-first memastikan setiap kali ada deploy baru,
-  // file terbaru langsung diambil tanpa perlu hapus cache manual.
+  // ── App shell: network-first + offline fallback ─────────────────────────────
   if (url.origin === self.location.origin) {
     e.respondWith(networkFirst(e.request, CACHE_APP));
     return;
   }
 
-  // ── Default: coba network, fallback cache ────────────────────────────────────
   e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
 });
 
-// ── Strategi: Network-first, cache sebagai fallback + update cache ────────────
+// ── Network-first ─────────────────────────────────────────────────────────────
 async function networkFirst(request, cacheName) {
   try {
     const response = await fetch(request);
-    // Cache hanya response yang valid (200 OK, bukan opaque)
     if (response && response.status === 200 && response.type !== 'error') {
       const cache = await caches.open(cacheName);
       cache.put(request, response.clone());
     }
     return response;
   } catch {
-    // Network gagal (offline) → coba cache
     const cached = await caches.match(request);
     if (cached) return cached;
-    // Jika HTML tidak ada di cache, kembalikan halaman offline sederhana
     if (request.destination === 'document') {
       return new Response(
         `<!DOCTYPE html><html lang="id"><head><meta charset="UTF-8">
@@ -103,7 +96,7 @@ async function networkFirst(request, cacheName) {
         </style></head><body>
         <div class="icon"><img src="ikon-transparant.png" alt="Notara" width="48" height="48"></div>
         <h2>Notara — Offline</h2>
-        <p>Tidak ada koneksi internet. Data kamu aman di Supabase.</p>
+        <p>Tidak ada koneksi internet. Data kamu tersimpan lokal di perangkat.</p>
         <button onclick="location.reload()">Coba Lagi</button>
         </body></html>`,
         { headers: { 'Content-Type': 'text/html; charset=utf-8' } }
@@ -113,7 +106,7 @@ async function networkFirst(request, cacheName) {
   }
 }
 
-// ── Strategi: Cache-first, network sebagai fallback + update cache ────────────
+// ── Cache-first ───────────────────────────────────────────────────────────────
 async function cacheFirst(request, cacheName) {
   const cached = await caches.match(request);
   if (cached) return cached;
@@ -141,7 +134,7 @@ self.addEventListener('push', e => {
   );
 });
 
-// ── Pesan dari app (misal: force refresh) ────────────────────────────────────
+// ── Pesan dari app ────────────────────────────────────────────────────────────
 self.addEventListener('message', e => {
   if (e.data === 'skipWaiting') self.skipWaiting();
 });

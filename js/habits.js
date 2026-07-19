@@ -1,149 +1,22 @@
-/* js/habits.js — Habit Tracker Module */
+/* js/habits.js — Habit Tracker Module (offline-first) */
 'use strict';
 window.Notara = window.Notara || {};
 window.Notara.HabitTracker = (() => {
-  const db = () => window.Notara.db;
-  const UI = window.Notara.UI;
-  const Au = window.Notara.Auth;
+  const Data = () => window.Notara.Data;
+  const UI   = window.Notara.UI;
 
-  function _userId() { return Au.getUser()?.id; }
   function _today() { return new Date().toISOString().slice(0, 10); }
   function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
-  async function getAll(userId) {
-    const uid = userId || _userId();
-    if (!uid) return [];
-    const { data, error } = await db()
-      .from('habit_lists')
-      .select('*')
-      .eq('user_id', uid)
-      .eq('active', true)
-      .order('sort_order', { ascending: true });
-    if (error) { console.warn('[Habits] getAll error:', error.message); return []; }
-    return data || [];
-  }
-
-  async function create(userId, name) {
-    const uid = userId || _userId();
-    if (!uid) throw new Error('User not logged in');
-    const { data: existing } = await db()
-      .from('habit_lists')
-      .select('sort_order')
-      .eq('user_id', uid)
-      .order('sort_order', { ascending: false })
-      .limit(1);
-    const nextOrder = (existing && existing[0]) ? existing[0].sort_order + 1 : 0;
-    const { data, error } = await db()
-      .from('habit_lists')
-      .insert({ user_id: uid, name: name.trim(), sort_order: nextOrder })
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
-  }
-
-  async function update(id, changes) {
-    const { data, error } = await db()
-      .from('habit_lists')
-      .update(changes)
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    return data;
-  }
-
-  async function remove(id) {
-    const { error } = await db()
-      .from('habit_lists')
-      .update({ active: false })
-      .eq('id', id);
-    if (error) throw error;
-    return true;
-  }
-
-  async function getTodayLogs(userId) {
-    const uid = userId || _userId();
-    if (!uid) return [];
-    const { data, error } = await db()
-      .from('habit_logs')
-      .select('*')
-      .eq('user_id', uid)
-      .eq('date', _today());
-    if (error) { console.warn('[Habits] getTodayLogs error:', error.message); return []; }
-    return data || [];
-  }
-
-  async function toggle(userId, habitId, date) {
-    const uid = userId || _userId();
-    if (!uid) throw new Error('User not logged in');
-    const d = date || _today();
-    const { data: existing } = await db()
-      .from('habit_logs')
-      .select('*')
-      .eq('user_id', uid)
-      .eq('habit_id', habitId)
-      .eq('date', d)
-      .maybeSingle();
-    if (existing) {
-      const { data, error } = await db()
-        .from('habit_logs')
-        .update({ completed: !existing.completed })
-        .eq('id', existing.id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    } else {
-      const { data, error } = await db()
-        .from('habit_logs')
-        .insert({ user_id: uid, habit_id: habitId, date: d, completed: true })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    }
-  }
-
-  async function getStreak(habitId, userId) {
-    const uid = userId || _userId();
-    if (!uid) return 0;
-    const { data, error } = await db()
-      .from('habit_logs')
-      .select('date, completed')
-      .eq('user_id', uid)
-      .eq('habit_id', habitId)
-      .eq('completed', true)
-      .order('date', { ascending: false });
-    if (error || !data) return 0;
-    let streak = 0;
-    const today = new Date();
-    for (let i = 0; i < 365; i++) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      const iso = d.toISOString().slice(0, 10);
-      const log = data.find(l => l.date === iso);
-      if (log) { streak++; } else if (i > 0) { break; }
-    }
-    return streak;
-  }
-
-  async function getCompletionRate(habitId, days = 7) {
-    const uid = _userId();
-    if (!uid) return 0;
-    const start = new Date();
-    start.setDate(start.getDate() - days + 1);
-    const { data, error } = await db()
-      .from('habit_logs')
-      .select('date, completed')
-      .eq('user_id', uid)
-      .eq('habit_id', habitId)
-      .gte('date', start.toISOString().slice(0, 10))
-      .lte('date', _today());
-    if (error || !data) return 0;
-    const completed = data.filter(l => l.completed).length;
-    return days > 0 ? Math.round((completed / days) * 100) : 0;
-  }
+  /* ── Data operations ───────────────────── */
+  async function getAll()           { return Data().habits.getAll(); }
+  async function create(name)       { return Data().habits.create(name); }
+  async function update(id, ch)     { return Data().habits.update(id, ch); }
+  async function remove(id)         { return Data().habits.remove(id); }
+  async function getTodayLogs()     { return Data().habits.getTodayLogs(); }
+  async function toggle(habitId, d) { return Data().habits.toggleLog(habitId, d || _today()); }
+  async function getStreak(habitId) { return Data().habits.getStreak(habitId); }
+  async function getCompletionRate(habitId, days) { return Data().habits.getCompletionRate(habitId, days || 7); }
 
   const DEFAULTS = [
     'Minum Air 2L', 'Olahraga 30 Menit', 'Membaca 15 Menit',
@@ -155,17 +28,10 @@ window.Notara.HabitTracker = (() => {
   async function _seedDefaults() {
     const existing = await getAll();
     if (existing.length > 0) return;
-    const uid = _userId();
-    if (!uid) return;
-    const inserts = DEFAULTS.map((name, i) => ({
-      user_id: uid,
-      name,
-      sort_order: i,
-    }));
-    const { error } = await db().from('habit_lists').insert(inserts);
-    if (error) console.warn('[Habits] seed defaults error:', error.message);
+    for (const name of DEFAULTS) { try { await create(name); } catch {} }
   }
 
+  /* ── Page Render ── */
   async function renderPage() {
     const main = document.getElementById('app-main');
     UI.setTitle('Kebiasaan');
@@ -176,8 +42,8 @@ window.Notara.HabitTracker = (() => {
     const [habits, logs] = await Promise.all([getAll(), getTodayLogs()]);
     const completedIds = new Set(logs.filter(l => l.completed).map(l => l.habit_id));
     const total = habits.length;
-    const done = habits.filter(h => completedIds.has(h.id)).length;
-    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    const done  = habits.filter(h => completedIds.has(h.id)).length;
+    const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
 
     let html = '<div class="tracker-page page-enter">';
     html += `<div class="tracker-header"><h2><i class="ph ph-check-circle"></i> Kebiasaan Hari Ini</h2><div style="display:flex;gap:6px"><button class="btn-primary" id="habit-add-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem"><i class="ph ph-plus"></i> Tambah</button><button class="btn-ghost" id="habit-manage-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem"><i class="ph ph-list"></i> Kelola</button></div></div>`;
@@ -200,9 +66,7 @@ window.Notara.HabitTracker = (() => {
         html += `</div>`;
       });
     }
-    html += `</div>`;
-
-    html += `</div>`;
+    html += `</div></div>`;
     main.innerHTML = html;
 
     habits.forEach(async h => {
@@ -220,16 +84,15 @@ window.Notara.HabitTracker = (() => {
       item.addEventListener('click', async () => {
         const id = item.dataset.id;
         const checkbox = item.querySelector('.habit-checkbox');
-        const wasChecked = checkbox.classList.contains('checked');
         checkbox.classList.toggle('checked');
         item.classList.toggle('completed');
 
         try {
-          await toggle(null, id);
+          await toggle(id);
           const freshLogs = await getTodayLogs();
-          const done = freshLogs.filter(l => l.completed).length;
+          const done  = freshLogs.filter(l => l.completed).length;
           const total = habits.length;
-          const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+          const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
 
           const card = document.querySelector('.habit-progress-card');
           if (card) {
@@ -318,7 +181,7 @@ window.Notara.HabitTracker = (() => {
         btn.disabled = true;
         btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Menyimpan...';
         try {
-          if (isEdit) { await update(existing.id, { name }); } else { await create(null, name); }
+          if (isEdit) { await update(existing.id, { name }); } else { await create(name); }
           UI.toast(isEdit ? 'Kebiasaan diperbarui' : 'Kebiasaan baru dibuat!', 'success');
           document.getElementById('modal-close')?.click();
           renderPage();

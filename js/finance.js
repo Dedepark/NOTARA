@@ -1,12 +1,10 @@
-/* js/finance.js — Finance Tracker Module */
+/* js/finance.js — Finance Tracker Module (offline-first) */
 'use strict';
 window.Notara = window.Notara || {};
 window.Notara.FinanceTracker = (() => {
-  const db = () => window.Notara.db;
-  const UI = window.Notara.UI;
-  const Au = window.Notara.Auth;
+  const Data = () => window.Notara.Data;
+  const UI   = window.Notara.UI;
 
-  function _userId() { return Au.getUser()?.id; }
   function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
   function _fmtRp(n) {
@@ -34,36 +32,14 @@ window.Notara.FinanceTracker = (() => {
     'Investasi': '#4d96ff', 'Hadiah': '#ffd93d',
   };
 
-  async function addTransaction(userId, data) {
-    const uid = userId || _userId();
-    if (!uid) throw new Error('User not logged in');
-    const { error } = await db().from('finance_transactions').insert({ user_id: uid, ...data });
-    if (error) throw error;
-  }
+  /* ── Data operations ───────────────────── */
+  async function addTransaction(data)         { return Data().finance.addTransaction(data); }
+  async function removeTransaction(id)        { return Data().finance.removeTransaction(id); }
+  async function getByMonth(year, month)      { return Data().finance.getByMonth(year, month); }
+  async function getCategories()              { return Data().finance.getCategories(); }
 
-  async function removeTransaction(id) {
-    const { error } = await db().from('finance_transactions').delete().eq('id', id);
-    if (error) throw error;
-  }
-
-  async function getByMonth(userId, year, month) {
-    const uid = userId || _userId();
-    if (!uid) return [];
-    const start = new Date(year, month, 1).toISOString();
-    const end = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
-    const { data, error } = await db()
-      .from('finance_transactions')
-      .select('*')
-      .eq('user_id', uid)
-      .gte('transaction_date', start)
-      .lte('transaction_date', end)
-      .order('transaction_date', { ascending: false });
-    if (error) { console.warn('[Finance] getByMonth error:', error.message); return []; }
-    return data || [];
-  }
-
-  async function getMonthlySummary(userId, year, month) {
-    const tx = await getByMonth(userId, year, month);
+  async function getMonthlySummary(year, month) {
+    const tx = await getByMonth(year, month);
     let income = 0, expense = 0;
     const catMap = {};
     tx.forEach(t => {
@@ -73,20 +49,9 @@ window.Notara.FinanceTracker = (() => {
     return { income, expense, balance: income - expense, transactions: tx, categoryBreakdown: catMap };
   }
 
-  async function getCategories(userId) {
-    const uid = userId || _userId();
-    if (!uid) return [];
-    const { data, error } = await db()
-      .from('finance_categories')
-      .select('*')
-      .eq('user_id', uid)
-      .order('sort_order', { ascending: true });
-    if (error) { console.warn('[Finance] getCategories error:', error.message); return []; }
-    return data || [];
-  }
-
   let _currentYear, _currentMonth;
 
+  /* ── Page Render ── */
   async function renderPage() {
     const main = document.getElementById('app-main');
     UI.setTitle('Keuangan');
@@ -94,15 +59,14 @@ window.Notara.FinanceTracker = (() => {
     main.innerHTML = `<div class="page-loading"><div class="loader-ring"></div></div>`;
 
     const now = new Date();
-    _currentYear = now.getFullYear();
+    _currentYear  = now.getFullYear();
     _currentMonth = now.getMonth();
-
     await _renderDashboard();
   }
 
   async function _renderDashboard() {
-    const main = document.getElementById('app-main');
-    const summary = await getMonthlySummary(null, _currentYear, _currentMonth);
+    const main    = document.getElementById('app-main');
+    const summary = await getMonthlySummary(_currentYear, _currentMonth);
 
     let html = '<div class="tracker-page page-enter">';
     html += `<div class="tracker-header"><h2><i class="ph ph-wallet"></i> Keuangan</h2><div style="display:flex;align-items:center;gap:6px"><button class="icon-btn" id="finance-prev" style="width:28px;height:28px"><i class="ph ph-caret-left"></i></button><span style="font-size:0.85rem;font-weight:800;color:var(--text-1);min-width:140px;text-align:center">${_monthLabel(_currentYear, _currentMonth)}</span><button class="icon-btn" id="finance-next" style="width:28px;height:28px"><i class="ph ph-caret-right"></i></button></div></div>`;
@@ -125,7 +89,7 @@ window.Notara.FinanceTracker = (() => {
 
       html += `<div class="finance-category-breakdown">`;
       cats.forEach(([cat, amount]) => {
-        const pct = Math.round((amount / totalExpense) * 100);
+        const pct   = Math.round((amount / totalExpense) * 100);
         const color = CATEGORY_COLORS[cat] || '#8b91a8';
         html += `<div class="finance-cat-row">`;
         html += `<div class="finance-cat-color" style="background:${color}"></div>`;
@@ -143,11 +107,11 @@ window.Notara.FinanceTracker = (() => {
       html += `<div class="empty-state" style="min-height:25vh"><span class="empty-icon"><i class="ph ph-wallet" style="font-size:2.5rem;color:var(--accent);opacity:0.35"></i></span><h3>Belum ada transaksi</h3><p>Tambahkan transaksi pertama kamu bulan ini</p></div>`;
     } else {
       summary.transactions.forEach(tx => {
-        const d = new Date(tx.transaction_date);
+        const d       = new Date(tx.transaction_date);
         const dateStr = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short' });
         const timeStr = d.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-        const icon = CATEGORY_ICONS[tx.category] || 'tag';
-        const sign = tx.type === 'income' ? '+' : '-';
+        const icon    = CATEGORY_ICONS[tx.category] || 'tag';
+        const sign    = tx.type === 'income' ? '+' : '-';
         html += `<div class="finance-tx" data-id="${tx.id}">`;
         html += `<div class="finance-tx-icon ${tx.type}"><i class="ph ph-${icon}"></i></div>`;
         html += `<div class="finance-tx-info"><div class="finance-tx-category">${_esc(tx.category)}</div>${tx.description ? `<div class="finance-tx-desc">${_esc(tx.description)}</div>` : ''}<div class="finance-tx-date">${dateStr} ${timeStr}</div></div>`;
@@ -156,9 +120,7 @@ window.Notara.FinanceTracker = (() => {
         html += `</div>`;
       });
     }
-    html += `</div>`;
-
-    html += `</div>`;
+    html += `</div></div>`;
     main.innerHTML = html;
 
     _bindDashboardEvents();
@@ -188,7 +150,7 @@ window.Notara.FinanceTracker = (() => {
   function _showAddForm() {
     let txType = 'expense';
     const expenseCats = ['Makanan', 'Transportasi', 'Belanja', 'Tagihan', 'Hiburan', 'Kesehatan', 'Pendidikan', 'Lainnya'];
-    const incomeCats = ['Gaji', 'Freelance', 'Investasi', 'Hadiah', 'Lainnya'];
+    const incomeCats  = ['Gaji', 'Freelance', 'Investasi', 'Hadiah', 'Lainnya'];
 
     function catOptions(type) {
       const cats = type === 'income' ? incomeCats : expenseCats;
@@ -243,7 +205,7 @@ window.Notara.FinanceTracker = (() => {
       }
 
       function _updateAmountStyle() {
-        const input = document.getElementById('finance-amount');
+        const input  = document.getElementById('finance-amount');
         const prefix = document.getElementById('finance-amount-prefix');
         if (!input || !prefix) return;
         if (txType === 'expense') {
@@ -258,8 +220,8 @@ window.Notara.FinanceTracker = (() => {
       }
 
       document.getElementById('finance-form-save')?.addEventListener('click', async () => {
-        const amount = parseFloat(document.getElementById('finance-amount')?.value);
-        const category = document.getElementById('finance-category')?.value;
+        const amount      = parseFloat(document.getElementById('finance-amount')?.value);
+        const category    = document.getElementById('finance-category')?.value;
         const description = document.getElementById('finance-desc')?.value?.trim() || '';
 
         if (!amount || amount <= 0) { document.getElementById('finance-error').textContent = 'Nominal wajib diisi.'; return; }
@@ -269,7 +231,7 @@ window.Notara.FinanceTracker = (() => {
         btn.disabled = true;
         btn.innerHTML = '<i class="ph ph-spinner ph-spin"></i> Menyimpan...';
         try {
-          await addTransaction(null, {
+          await addTransaction({
             type: txType,
             amount,
             category,

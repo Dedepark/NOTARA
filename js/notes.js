@@ -1,49 +1,10 @@
-/* js/notes.js — Note CRUD via Supabase */
+/* js/notes.js — Note CRUD via Notara.Data (offline-first) */
 'use strict';
 
 window.Notara = window.Notara || {};
 
 window.Notara.Notes = (() => {
-  const db = () => window.Notara.db;
-
-  /* ── Field mapping DB → JS ─────────────── */
-  function _fromDb(row) {
-    if (!row) return null;
-    return {
-      id:         row.id,
-      title:      row.title,
-      content:    row.content,
-      label:      row.label,
-      pinned:     row.pinned,
-      favorite:   row.favorite,
-      locked:     row.locked,
-      lockPin:    row.lock_pin,
-      hidden:     row.hidden,
-      reminder:   row.reminder,
-      deadline:   row.deadline    || null,
-      reminderAt: row.reminder_at || null,
-      deletedAt:  row.deleted_at  || null,   // ← Trash support
-      createdAt:  row.created_at,
-      updatedAt:  row.updated_at,
-    };
-  }
-
-  function _toDb(data) {
-    const obj = {};
-    if (data.title      !== undefined) obj.title       = data.title;
-    if (data.content    !== undefined) obj.content     = data.content;
-    if (data.label      !== undefined) obj.label       = data.label;
-    if (data.pinned     !== undefined) obj.pinned      = data.pinned;
-    if (data.favorite   !== undefined) obj.favorite    = data.favorite;
-    if (data.locked     !== undefined) obj.locked      = data.locked;
-    if (data.lockPin    !== undefined) obj.lock_pin    = data.lockPin;
-    if (data.hidden     !== undefined) obj.hidden      = data.hidden;
-    if (data.reminder   !== undefined) obj.reminder    = data.reminder;
-    if (data.deadline   !== undefined) obj.deadline    = data.deadline;
-    if (data.reminderAt !== undefined) obj.reminder_at = data.reminderAt;
-    if (data.deletedAt  !== undefined) obj.deleted_at  = data.deletedAt;
-    return obj;
-  }
+  const Data = () => window.Notara.Data;
 
   function _stripHtml(html) {
     const d = document.createElement('div');
@@ -57,86 +18,57 @@ window.Notara.Notes = (() => {
     return first.slice(0, 60) || 'Catatan baru';
   }
 
-  /* ── In-Memory Cache ─────────────────────────
-   * Prevents redundant Supabase round-trips.
-   * Cache is invalidated on every write (create/update/remove).
-   * TTL = 60 s as a safety net for background tab / realtime drift.
-   ──────────────────────────────────────────── */
-  let _cache    = null;   // Array<note> | null
-  let _cacheTs  = 0;
-  const _CACHE_TTL = 60_000; // 60 seconds
+  /* ── In-Memory Cache ───────────────────── */
+  let _cache   = null;
+  let _cacheTs = 0;
+  const _CACHE_TTL = 60_000;
 
   function _invalidateCache() { _cache = null; _cacheTs = 0; }
-
-  /** Patch a single note in the cache without re-fetching everything */
   function _patchCache(id, updated) {
     if (!_cache) return;
     const idx = _cache.findIndex(n => n.id === id);
     if (idx !== -1) _cache[idx] = updated;
-    else            _cache.unshift(updated); // new note
+    else            _cache.unshift(updated);
   }
 
-  /* ── getAll (excludes soft-deleted) ─────────── */
+  /* ── getAll ────────────────────────────── */
   async function getAll() {
-    // Return cache if fresh
     if (_cache && (Date.now() - _cacheTs) < _CACHE_TTL) return _cache;
-
-    const userId = window.Notara.Auth.getUser()?.id;
-    const { data, error } = await db()
-      .from('notes')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('hidden', false)
-      .is('deleted_at', null)
-      .order('pinned', { ascending: false })
-      .order('updated_at', { ascending: false });
-    if (error) throw error;
-    _cache   = data.map(_fromDb);
+    let all = await Data().notes.getAll();
+    all = all.filter(n => !n.hidden);
+    all.sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1));
+    all.sort((a, b) => new Date(b.updated_at || b.updatedAt) - new Date(a.updated_at || a.updatedAt));
+    _cache   = all;
     _cacheTs = Date.now();
     return _cache;
   }
 
-  /* ── getById ─────────────────────────────── */
+  /* ── getById ───────────────────────────── */
   async function getById(id) {
-    // Check cache first to avoid a round-trip
     if (_cache) {
       const hit = _cache.find(n => n.id === id);
       if (hit) return hit;
     }
-    const { data, error } = await db()
-      .from('notes')
-      .select('*')
-      .eq('id', id)
-      .single();
-    if (error) return null;
-    return _fromDb(data);
+    return Data().notes.getById(id);
   }
 
-  /* ── create ──────────────────────────────── */
+  /* ── create ────────────────────────────── */
   async function create(data = {}) {
-    const userId = window.Notara.Auth.getUser()?.id;
-    const row = {
-      user_id:     userId,
-      title:       data.title      || 'Catatan baru',
-      content:     data.content    || '',
-      label:       data.label      || 'medium',
-      pinned:      data.pinned     || false,
-      favorite:    data.favorite   || false,
-      deadline:    data.deadline   || null,
-      reminder_at: data.reminderAt || null,
-    };
-    const { data: created, error } = await db()
-      .from('notes')
-      .insert(row)
-      .select()
-      .single();
-    if (error) throw error;
-    _invalidateCache();   // fresh insert → reload on next getAll()
+    const note = await Data().notes.create({
+      title:      data.title      || 'Catatan baru',
+      content:    data.content    || '',
+      label:      data.label      || 'medium',
+      pinned:     data.pinned     || false,
+      favorite:   data.favorite   || false,
+      deadline:   data.deadline   || null,
+      reminderAt: data.reminderAt || null,
+    });
+    _invalidateCache();
     _emitChange();
-    return _fromDb(created);
+    return note;
   }
 
-  /* ── update ──────────────────────────────── */
+  /* ── update ────────────────────────────── */
   async function update(id, changes = {}) {
     if (changes.content && !changes.title) {
       const current = await getById(id);
@@ -144,78 +76,26 @@ window.Notara.Notes = (() => {
         changes.title = _smartTitle(changes.content);
       }
     }
-    const { data, error } = await db()
-      .from('notes')
-      .update(_toDb(changes))
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    const updated = _fromDb(data);
-    _patchCache(id, updated);   // update in-place — keeps cache alive
+    const updated = await Data().notes.update(id, changes);
+    _patchCache(id, updated);
     _emitChange();
     return updated;
   }
 
-  /* ── remove (soft delete → Trash) ───────── */
+  /* ── remove (soft delete) ─────────────── */
   async function remove(id) {
-    const { data, error } = await db()
-      .from('notes')
-      .update({ deleted_at: new Date().toISOString() })
-      .eq('id', id)
-      .select();
-    if (error) throw error;
-    // Remove from cache immediately so next getAll() reflects it
+    await Data().notes.remove(id);
     if (_cache) _cache = _cache.filter(n => n.id !== id);
     _emitChange();
     return true;
   }
 
-  /* ── Trash: getTrash ─────────────────────── */
-  async function getTrash() {
-    const userId = window.Notara.Auth.getUser()?.id;
-    const { data, error } = await db()
-      .from('notes')
-      .select('*')
-      .eq('user_id', userId)
-      .not('deleted_at', 'is', null)
-      .order('deleted_at', { ascending: false });
-    if (error) throw error;
-    return data.map(_fromDb);
-  }
+  /* ── Trash ─────────────────────────────── */
+  async function getTrash()      { return Data().notes.getTrash(); }
+  async function restore(id)     { _invalidateCache(); _emitChange(); return Data().notes.restore(id); }
+  async function permanentDelete(id) { _invalidateCache(); _emitChange(); return Data().notes.permanentDelete(id); }
 
-  /* ── Trash: restore ──────────────────────── */
-  async function restore(id) {
-    const { data, error } = await db()
-      .from('notes')
-      .update({ deleted_at: null })
-      .eq('id', id)
-      .select()
-      .single();
-    if (error) throw error;
-    _emitChange();
-    return _fromDb(data);
-  }
-
-  /* ── Trash: permanentDelete ──────────────── */
-  async function permanentDelete(id) {
-    const { data, error } = await db()
-      .from('notes')
-      .delete()
-      .eq('id', id)
-      .select();
-    if (error) throw error;
-    if (!data || data.length === 0) {
-      throw new Error('Tidak ada baris yang terhapus — periksa RLS policy DELETE di Supabase.');
-    }
-    // Also clear any stored versions
-    _clearVersions(id);
-    if (_cache) _cache = _cache.filter(n => n.id !== id);
-    _emitChange();
-    return true;
-  }
-
-  /* ── pin / favorite / duplicate ─────────── */
+  /* ── pin / favorite / duplicate ────────── */
   async function pin(id) {
     const note = await getById(id);
     if (!note) return;
@@ -231,58 +111,29 @@ window.Notara.Notes = (() => {
   async function duplicate(id) {
     const note = await getById(id);
     if (!note) return null;
-    return create({
-      title:   note.title + ' (Salinan)',
-      content: note.content,
-      label:   note.label,
-    });
+    return create({ title: note.title + ' (Salinan)', content: note.content, label: note.label });
   }
 
-  async function setLabel(id, label) { return update(id, { label }); }
-
-  async function lock(id, pin)  { return update(id, { locked: true,  lockPin: pin }); }
-  async function unlock(id)     { return update(id, { locked: false, lockPin: '' });  }
+  async function setLabel(id, label)    { return update(id, { label }); }
+  async function lock(id, pin)          { return update(id, { locked: true, lockPin: pin }); }
+  async function unlock(id)             { return update(id, { locked: false, lockPin: '' }); }
   async function verifyPin(id, pin) {
     const note = await getById(id);
     return note && note.lockPin === pin;
   }
-
-  async function setDeadline(id, isoString)   { return update(id, { deadline:   isoString || null }); }
+  async function setDeadline(id, isoString)   { return update(id, { deadline: isoString || null }); }
   async function setReminderAt(id, isoString) { return update(id, { reminderAt: isoString || null }); }
 
-  /* ── search ──────────────────────────────── */
+  /* ── search ────────────────────────────── */
   async function search(query, filters = {}) {
-    const userId = window.Notara.Auth.getUser()?.id;
-    let q = db()
-      .from('notes')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('hidden', false)
-      .is('deleted_at', null)
-      .order('pinned', { ascending: false })
-      .order('updated_at', { ascending: false });
-
-    if (filters.label && filters.label !== 'all') q = q.eq('label', filters.label);
-    if (filters.pinned)   q = q.eq('pinned',   true);
-    if (filters.favorite) q = q.eq('favorite', true);
-
-    const { data, error } = await q;
-    if (error) throw error;
-
-    let results = data.map(_fromDb);
-    if (query && query.trim()) {
-      const lower = query.toLowerCase().trim();
-      results = results.filter(n => {
-        const text = (n.title + ' ' + _stripHtml(n.content)).toLowerCase();
-        return text.includes(lower);
-      });
-    }
+    let results = await Data().notes.search(query, filters);
+    results = results.filter(n => !n.hidden);
+    results.sort((a, b) => (a.pinned === b.pinned ? 0 : a.pinned ? -1 : 1));
     return results;
   }
 
-  /* ── getPriorityNotes ────────────────────── */
+  /* ── getPriorityNotes ──────────────────── */
   async function getPriorityNotes() {
-    // Reuse getAll() so we benefit from the cache — no extra DB query
     const all   = await getAll();
     const order = { hard: 0, medium: 1, easy: 2 };
     return all
@@ -291,12 +142,12 @@ window.Notara.Notes = (() => {
       .slice(0, 2);
   }
 
-  /* ── getTimeline ─────────────────────────── */
+  /* ── getTimeline ───────────────────────── */
   async function getTimeline() {
-    const notes = await getAll();
+    const notes  = await getAll();
     const groups = {};
     notes.forEach(n => {
-      const d   = new Date(n.updatedAt);
+      const d   = new Date(n.updated_at || n.updatedAt);
       const key = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
       if (!groups[key]) groups[key] = [];
       groups[key].push(n);
@@ -304,62 +155,37 @@ window.Notara.Notes = (() => {
     return groups;
   }
 
-  /* ── count ───────────────────────────────── */
-  async function count() {
-    const userId = window.Notara.Auth.getUser()?.id;
-    const { count: c, error } = await db()
-      .from('notes')
-      .select('id', { count: 'exact' })
-      .eq('user_id', userId)
-      .is('deleted_at', null);
-    if (error) return 0;
-    return c || 0;
-  }
+  /* ── count / trashCount ────────────────── */
+  async function count()        { return Data().notes.count(); }
+  async function trashCount()   { return Data().notes.trashCount(); }
 
-  /* ── trashCount ──────────────────────────── */
-  async function trashCount() {
-    const userId = window.Notara.Auth.getUser()?.id;
-    const { count: c, error } = await db()
-      .from('notes')
-      .select('id', { count: 'exact' })
-      .eq('user_id', userId)
-      .not('deleted_at', 'is', null);
-    if (error) return 0;
-    return c || 0;
-  }
-
-  /* ── Note Versioning (localStorage) ─────── */
+  /* ── Note Versioning (localStorage) ────── */
   const MAX_VERSIONS = 10;
-
   function _versionKey(id) { return `notara_ver_${id}`; }
 
   function saveVersion(id, title, content, label) {
     if (!id) return;
     try {
-      const key     = _versionKey(id);
-      const raw     = localStorage.getItem(key);
+      const key      = _versionKey(id);
+      const raw      = localStorage.getItem(key);
       const versions = raw ? JSON.parse(raw) : [];
       versions.unshift({ savedAt: new Date().toISOString(), title, content, label });
       if (versions.length > MAX_VERSIONS) versions.splice(MAX_VERSIONS);
       localStorage.setItem(key, JSON.stringify(versions));
-    } catch (e) {
-      console.warn('[Notara] saveVersion failed:', e);
-    }
+    } catch (e) { console.warn('[Notara] saveVersion failed:', e); }
   }
 
   function getVersions(id) {
     if (!id) return [];
-    try {
-      const raw = localStorage.getItem(_versionKey(id));
-      return raw ? JSON.parse(raw) : [];
-    } catch { return []; }
+    try { const raw = localStorage.getItem(_versionKey(id)); return raw ? JSON.parse(raw) : []; }
+    catch { return []; }
   }
 
   function _clearVersions(id) {
     try { localStorage.removeItem(_versionKey(id)); } catch {}
   }
 
-  /* ── Export TXT ──────────────────────────── */
+  /* ── Export TXT ────────────────────────── */
   async function exportTxt(id) {
     const note = await getById(id);
     if (!note) return;
@@ -369,7 +195,7 @@ window.Notara.Notes = (() => {
     _download(note.title + '.txt', text, 'text/plain');
   }
 
-  /* ── Export PDF ──────────────────────────── */
+  /* ── Export PDF ────────────────────────── */
   async function exportPdf(id) {
     const note = await getById(id);
     if (!note) return;
@@ -377,7 +203,6 @@ window.Notara.Notes = (() => {
       ? `<div class="meta-extra"><i><svg width="12" height="12" viewBox="0 0 512 512" style="vertical-align:-1px"><path fill="currentColor" d="M256 0C141.1 0 48 93.1 48 208v224c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V224h128v208c0 17.7 14.3 32 32 32h32c17.7 0 32-14.3 32-32V208C464 93.1 370.9 0 256 0zM96 208V48c0-26.5 21.5-48 48-48s48 21.5 48 48v160H96z"/></svg> Tenggat: ${new Date(note.deadline).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}</i></div>` : '';
     const reminderHtml = note.reminderAt
       ? `<div class="meta-extra"><i><svg width="12" height="12" viewBox="0 0 512 512" style="vertical-align:-1px"><path fill="currentColor" d="M224 0c-17.7 0-32 14.3-32 32V48H64C28.7 48 0 76.7 0 112v48l44.2 22.1c15.7 7.8 24 24.4 20.2 40.6l-4.7 20c16.3 11.3 34.8 18.7 55 21.5V288h256v-45.9c20.2-2.8 38.7-10.2 55-21.5l-4.7-20c-3.8-16.2 4.5-32.8 20.2-40.6L448 160v-48c0-35.3-28.7-64-64-64H320V32c0-17.7-14.3-32-32-32H224zM448 448H64c-35.3 0-64 28.7-64 64v32c0 17.7 14.3 32 32 32h448c17.7 0 32-14.3 32-32v-32c0-35.3-28.7-64-64-64z"/></svg> Pengingat: ${new Date(note.reminderAt).toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' })}</i></div>` : '';
-
     const win = window.open('', '_blank');
     win.document.write(`<!DOCTYPE html><html><head>
       <meta charset="UTF-8"><title>${note.title}</title>
@@ -389,7 +214,7 @@ window.Notara.Notes = (() => {
         @media print { body { margin: 0; } }
       </style></head><body>
       <h1>${note.title}</h1>
-      <div class="meta">Label: ${note.label} · ${new Date(note.updatedAt).toLocaleDateString('id-ID', { dateStyle: 'long' })}</div>
+      <div class="meta">Label: ${note.label} · ${new Date(note.updated_at || note.updatedAt).toLocaleDateString('id-ID', { dateStyle: 'long' })}</div>
       ${deadlineHtml}${reminderHtml}
       ${note.content}
       </body></html>`);
@@ -398,19 +223,13 @@ window.Notara.Notes = (() => {
     setTimeout(() => { win.print(); win.close(); }, 500);
   }
 
-  /* ── Share ───────────────────────────────── */
+  /* ── Share ─────────────────────────────── */
   async function shareNote(id) {
     const note = await getById(id);
     if (!note) return;
-    // Share via Web Share API or copy link
     const link = `${location.origin}${location.pathname}#read/${id}`;
-    if (navigator.share) {
-      navigator.share({ title: note.title, url: link }).catch(() => {});
-    } else {
-      navigator.clipboard.writeText(link).then(() => {
-        window.Notara.UI.toast('Link catatan disalin!', 'success');
-      });
-    }
+    if (navigator.share) { navigator.share({ title: note.title, url: link }).catch(() => {}); }
+    else { navigator.clipboard.writeText(link).then(() => { window.Notara.UI.toast('Link catatan disalin!', 'success'); }); }
   }
 
   function _download(filename, content, type) {
@@ -421,12 +240,11 @@ window.Notara.Notes = (() => {
     setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  /* ── Change listeners ────────────────────── */
+  /* ── Change listeners ──────────────────── */
   const _listeners = [];
   function _emitChange() { _listeners.forEach(fn => fn()); }
   function onChange(fn)  { _listeners.push(fn); }
-
-  function resetCache() { _invalidateCache(); }
+  function resetCache()  { _invalidateCache(); }
 
   return {
     getAll, getById, create, update, remove,

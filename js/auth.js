@@ -10,11 +10,35 @@ window.Notara.Auth = (() => {
   let _session  = null;
   let _user     = null;
   let _onReadyCb = null;
+  let _isGuest  = false;
 
   function getUser()    { return _user; }
   function getSession() { return _session; }
   function getName()    { return _user?.user_metadata?.name || _user?.email?.split('@')[0] || 'Pengguna'; }
   function isLoggedIn() { return !!_session; }
+  function isGuest()    { return _isGuest; }
+
+  function _setGuestMode(val) {
+    _isGuest = val;
+    if (val) {
+      const Guest = window.Notara.Guest;
+      _user = { id: Guest?._getGuestId(), is_guest: true, user_metadata: { name: 'Tamu' } };
+      _session = { is_guest: true };
+    } else {
+      _user = null;
+      _session = null;
+      _isGuest = false;
+    }
+  }
+
+  function enterGuestMode() {
+    _setGuestMode(true);
+    if (_onReadyCb) _onReadyCb(false);
+  }
+
+  function exitGuestMode() {
+    _setGuestMode(false);
+  }
 
   /* ── Init: cek session yang tersimpan ─────── */
   async function init(onReady) {
@@ -36,6 +60,7 @@ window.Notara.Auth = (() => {
 
   /* ── Register ────────────────────────────── */
   async function register(email, name, password) {
+    const wasGuest = window.Notara.Guest?.isGuestMode();
     const { data, error } = await db().auth.signUp({
       email,
       password,
@@ -45,19 +70,26 @@ window.Notara.Auth = (() => {
       }
     });
     if (error) throw error;
-    // Jika email confirmation disabled di Supabase dashboard,
-    // session langsung tersedia
     _session = data.session;
     _user    = data.user;
+    if (wasGuest && data.user) {
+      window.Notara.Guest.clearGuestData();
+      window.Notara.Data.sync.mergeGuestData(data.user.id).catch(() => {});
+    }
     return data;
   }
 
   /* ── Login ───────────────────────────────── */
   async function login(email, password) {
+    const wasGuest = window.Notara.Guest?.isGuestMode();
     const { data, error } = await db().auth.signInWithPassword({ email, password });
     if (error) throw error;
     _session = data.session;
     _user    = data.user;
+    if (wasGuest && data.user) {
+      window.Notara.Guest.clearGuestData();
+      window.Notara.Data.sync.mergeGuestData(data.user.id).catch(() => {});
+    }
     return data;
   }
 
@@ -150,6 +182,13 @@ window.Notara.Auth = (() => {
             </button>
           </form>
 
+          <div class="auth-divider"><span>atau</span></div>
+          <button class="btn-ghost auth-guest-btn" id="auth-guest-btn">
+            <i class="fa-solid fa-user-secret"></i>
+            <span>Masuk sebagai Tamu</span>
+          </button>
+          <p class="auth-guest-hint">Data tersimpan lokal di perangkatmu</p>
+
         </div>
       </div>
     `;
@@ -223,6 +262,16 @@ window.Notara.Auth = (() => {
         _setLoading(submit, false);
       }
     });
+
+    // Guest button
+    const guestBtn = document.getElementById('auth-guest-btn');
+    if (guestBtn) {
+      guestBtn.addEventListener('click', () => {
+        window.Notara.Guest.enterGuestMode();
+        enterGuestMode();
+        if (_onReadyCb) _onReadyCb(false);
+      });
+    }
   }
 
   function _bindEye(btnId, inputId) {
@@ -254,5 +303,5 @@ window.Notara.Auth = (() => {
     return msg;
   }
 
-  return { init, getUser, getSession, getName, isLoggedIn, login, register, logout, renderAuthPage };
+  return { init, getUser, getSession, getName, isLoggedIn, isGuest, enterGuestMode, exitGuestMode, _setGuestMode, login, register, logout, renderAuthPage };
 })();

@@ -549,6 +549,10 @@ body.editor-view .mobile-bottom-nav { display: none !important; }
 .auth-error { font-size: 0.75rem; color: var(--bg); background: var(--label-hard); padding: 0; border: none; text-align: center; min-height: 0; font-weight: 800; max-height: 0; overflow: hidden; opacity: 0; transition: all 0.2s; margin-top: 0; border-radius: var(--radius-md); }
 .auth-error:not(:empty) { padding: 6px 10px; border: var(--border-w) solid var(--border-strong); min-height: 1.2em; max-height: 100px; opacity: 1; margin-top: 8px; }
 .auth-submit { width: 100%; padding: 0.7rem; font-size: 0.95rem; margin-top: 6px; }
+.auth-divider { display: flex; align-items: center; gap: 10px; margin: 12px 0; font-size: 0.75rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; }
+.auth-divider::before, .auth-divider::after { content: ''; flex: 1; border-top: var(--border-w) solid var(--border-strong); }
+.auth-guest-btn { width: 100%; padding: 0.7rem; font-size: 0.95rem; display: flex; align-items: center; justify-content: center; gap: 8px; }
+.auth-guest-hint { font-size: 0.7rem; color: var(--text-3); font-weight: 600; text-align: center; margin-top: 4px; }
 
 /* Note Type Picker Modal */
 .note-type-picker { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }

@@ -43,10 +43,12 @@ Notara akan mendukung mode offline-first: semua data lokal tersimpan di IndexedD
 | | **Guest (Tanpa Akun)** | **Logged-in** |
 |---|---|---|
 | Data storage | IndexedDB lokal | IndexedDB + Supabase |
-| Fitur lokal | Catatan, Mood, Kebiasaan, Keuangan, Tag | Sama |
-| Fitur terbatas | Publikasi, Pesan CS, Komentar | Semua |
+| Fitur lokal | Catatan, Mood, Kebiasaan, Keuangan, Tag — full akses | Sama |
+| Fitur terbatas | Publikasi, Pesan CS, Komentar — **bisa akses halaman, tapi tampilkan placeholder + tombol login** | Semua |
 | Sync | Gak ada | Otomatis saat online |
 | Data migration | — | Auto-merge ke akun saat login |
+
+> **Catatan:** Guest tetap bisa buka halaman fitur online (Publikasi, Pesan, Komentar), tapi isi nya placeholder yang mengarahkan ke login/register. Bukan block total.
 
 ---
 
@@ -599,18 +601,67 @@ Saat user mode guest, tampilkan banner di bawah topbar:
 
 ### Fitur Terbatas (Guest)
 
-Saat guest mencoba akses fitur yang terbatas:
+Guest tetap bisa buka halaman fitur online. Halaman menampilkan placeholder yang informatif + tombol login/register.
+
+**Contoh: Halaman Publikasi (Guest)**
 
 ```
-┌─────────────────────────────────────────┐
-│  🔒 Fitur ini butuh akun                │
-│                                         │
-│  Buat akun gratis untuk mengakses       │
-│  Publikasi, Pesan CS, dan lainnya.      │
-│                                         │
-│  [Buat Akun]        [Nanti Saja]        │
-└─────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│ 📢 Publikasi                                │
+├─────────────────────────────────────────────┤
+│                                             │
+│  ┌─────────────────────────────────────┐    │
+│  │        (ikon/gambar placeholder)    │    │
+│  │                                     │    │
+│  │   Butuh akun untuk melihat          │    │
+│  │   publikasi dari pengguna lain.     │    │
+│  │                                     │    │
+│  │   Buat akun gratis dalam hitungan   │    │
+│  │   detik, atau masuk jika sudah      │    │
+│  │   punya akun.                       │    │
+│  │                                     │    │
+│  │   ┌──────────────┐ ┌──────────┐    │    │
+│  │   │  Buat Akun   │ │  Masuk   │    │    │
+│  │   └──────────────┘ └──────────┘    │    │
+│  └─────────────────────────────────────┘    │
+│                                             │
+└─────────────────────────────────────────────┘
 ```
+
+**Contoh: Halaman Pesan CS (Guest)**
+
+```
+┌─────────────────────────────────────────────┐
+│ 💬 Pesan                                    │
+├─────────────────────────────────────────────┤
+│                                             │
+│  ┌─────────────────────────────────────┐    │
+│  │        (ikon headset placeholder)   │    │
+│  │                                     │    │
+│  │   Hubungi Customer Service          │    │
+│  │   memerlukan akun.                  │    │
+│  │                                     │    │
+│  │   Masuk atau daftar untuk mengirim  │    │
+│  │   pesan, kritik, atau laporan bug.  │    │
+│  │                                     │    │
+│  │   ┌──────────────┐ ┌──────────┐    │    │
+│  │   │  Buat Akun   │ │  Masuk   │    │    │
+│  │   └──────────────┘ └──────────┘    │    │
+│  └─────────────────────────────────────┘    │
+│                                             │
+└─────────────────────────────────────────────┘
+```
+
+**Fitur yang tetap placeholder:**
+- Publikasi → "Butuh akun untuk melihat publikasi"
+- Pesan CS → "Hubungi CS memerlukan akun"
+- Komentar → "Masuk untuk berkomentar"
+- Semua placeholder punya tombol `[Buat Akun]` + `[Masuk]`
+
+**Mode offline (sudah login tapi internet mati):**
+- Buka halaman Publikasi → placeholder: "Koneksi internet diperlukan. Periksa jaringanmu."
+- Buka Pesan CS → placeholder: "Koneksi internet diperlukan untuk mengirim pesan."
+- Tanpa tombol login (sudah login), tapi dengan tombol retry/reload
 
 ---
 
@@ -796,8 +847,11 @@ Saat guest mencoba akses fitur yang terbatas:
 - [ ] Online lagi → catatan muncul di Supabase
 - [ ] Edit catatan di 2 device offline → last-write-wins
 - [ ] Guest mode → semua fitur lokal jalan
+- [ ] Guest buka Publikasi → placeholder + tombol login muncul
+- [ ] Guest buka Pesan CS → placeholder + tombol login muncul
 - [ ] Guest daftar akun → data merge otomatis
 - [ ] Login → sync pertama kali berjalan
-- [ ] Mode tamu gak bisa akses Publikasi/Pesan
+- [ ] Offline (sudah login) buka Publikasi → placeholder "perlu internet" muncul
+- [ ] Offline (sudah login) buka Pesan CS → placeholder "perlu internet" muncul
 - [ ] Offline indicator muncul di topbar
 - [ ] Sync indicator muncul saat syncing
