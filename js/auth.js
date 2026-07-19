@@ -238,9 +238,10 @@ window.Notara.Auth = (() => {
       errEl.textContent = '';
       try {
         await login(email, pass);
-        // onAuthStateChange will trigger _onReadyCb
+        if (_onReadyCb) _onReadyCb(isLoggedIn());
       } catch (err) {
         errEl.textContent = _translateError(err.message);
+      } finally {
         _setLoading(submit, false);
       }
     });
@@ -261,8 +262,10 @@ window.Notara.Auth = (() => {
       errEl.textContent = '';
       try {
         await register(email, name, pass);
+        if (_onReadyCb) _onReadyCb(isLoggedIn());
       } catch (err) {
         errEl.textContent = _translateError(err.message);
+      } finally {
         _setLoading(submit, false);
       }
     });
