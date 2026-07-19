@@ -572,9 +572,39 @@ window.Notara.Settings = (() => {
     });
 
     document.getElementById('setting-guest-login')?.addEventListener('click', () => {
-      window.Notara.Auth.exitGuestMode();
-      window.Notara.Guest.clearGuestData();
-      window.Notara.Auth.renderAuthPage();
+      window.Notara.UI.modal({
+        title: '<i class="fa-solid fa-download"></i> Ekspor Data Tamu',
+        body: `
+          <p style="color:var(--text-2);font-size:0.9rem;line-height:1.6;margin-bottom:var(--space-md)">
+            Sebelum masuk, ekspor data tamu kamu dulu supaya bisa diimport setelah daftar/masuk.
+          </p>
+          <div style="background:var(--surface);border:var(--border-w) solid var(--border-strong);padding:10px;font-size:0.8rem;color:var(--text-2)">
+            <i class="fa-solid fa-circle-info"></i> File backup (.json) akan didownload otomatis.
+          </div>
+        `,
+        footer: `<button class="btn-ghost" id="export-skip">Lewati</button><button class="btn-primary" id="export-then-login" style="margin-left:8px"><i class="fa-solid fa-download"></i> Ekspor & Lanjut</button>`,
+      });
+      setTimeout(() => {
+        document.getElementById('export-skip')?.addEventListener('click', () => {
+          document.getElementById('modal-close')?.click();
+          window.Notara.Auth.exitGuestMode();
+          window.Notara.Guest.clearGuestData();
+          window.Notara.Auth.renderAuthPage();
+        });
+        document.getElementById('export-then-login')?.addEventListener('click', async () => {
+          const btn = document.getElementById('export-then-login');
+          btn.disabled = true;
+          btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengekspor...';
+          try {
+            const json = await window.Notara.Data.exportGuestData();
+            if (json) window.Notara.Data.downloadExport(json);
+          } catch {}
+          document.getElementById('modal-close')?.click();
+          window.Notara.Auth.exitGuestMode();
+          window.Notara.Guest.clearGuestData();
+          window.Notara.Auth.renderAuthPage();
+        });
+      }, 60);
     });
 
     document.getElementById('setting-cs-report')?.addEventListener('click', () => {

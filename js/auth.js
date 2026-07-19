@@ -245,6 +245,7 @@ window.Notara.Auth = (() => {
       errEl.textContent = '';
       try {
         await login(email, pass);
+        await _tryImportAfterAuth();
         if (_onReadyCb) _onReadyCb(isLoggedIn());
       } catch (err) {
         errEl.textContent = _translateError(err.message);
@@ -269,6 +270,7 @@ window.Notara.Auth = (() => {
       errEl.textContent = '';
       try {
         await register(email, name, pass);
+        await _tryImportAfterAuth();
         if (_onReadyCb) _onReadyCb(isLoggedIn());
       } catch (err) {
         errEl.textContent = _translateError(err.message);
@@ -302,7 +304,16 @@ window.Notara.Auth = (() => {
     });
   }
 
+  async function _tryImportAfterAuth() {
+    if (!window.Notara.Data.hasPendingExport()) return;
+    try {
+      await window.Notara.Data.importGuestData(_user.id);
+    } catch {}
+    window.Notara.Data.clearPendingExport();
+  }
+
   function _setLoading(btn, loading) {
+    if (!btn) return;
     btn.disabled = loading;
     const span = btn.querySelector('span');
     if (span) span.textContent = loading ? 'Memuat...' : btn.id === 'login-submit' ? 'Masuk' : 'Buat Akun';

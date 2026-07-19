@@ -526,7 +526,58 @@ window.Notara.Data = (() => {
     },
   };
 
+  /* ── Export / Import (guest data backup) ─── */
+  const EXPORT_KEY = 'notara_export_data';
+
+  async function exportGuestData() {
+    const guestId = Guest()?._getGuestId();
+    if (!guestId) return null;
+    const stores = ['notes', 'mood', 'habit_lists', 'habit_logs', 'finance_tx', 'finance_cat', 'tags'];
+    const payload = { version: 1, exported_at: _now(), guest_id: guestId, data: {} };
+    for (const store of stores) {
+      const items = await IDB().getAll(store);
+      payload.data[store] = items.filter(i => i.user_id === guestId);
+    }
+    const json = JSON.stringify(payload);
+    localStorage.setItem(EXPORT_KEY, json);
+    return json;
+  }
+
+  function downloadExport(json) {
+    const blob = new Blob([json], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url;
+    a.download = `notara-backup-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  async function importGuestData(userId) {
+    const raw = localStorage.getItem(EXPORT_KEY);
+    if (!raw) return false;
+    let payload;
+    try { payload = JSON.parse(raw); } catch { return false; }
+    if (!payload.data) return false;
+    const stores = ['notes', 'mood', 'habit_lists', 'habit_logs', 'finance_tx', 'finance_cat', 'tags'];
+    for (const store of stores) {
+      const items = payload.data[store] || [];
+      for (const item of items) {
+        item.user_id = userId;
+        item.updated_at = _now();
+        await IDB().put(store, item);
+      }
+    }
+    localStorage.removeItem(EXPORT_KEY);
+    return true;
+  }
+
+  function hasPendingExport() { return !!localStorage.getItem(EXPORT_KEY); }
+  function clearPendingExport() { localStorage.removeItem(EXPORT_KEY); }
+
   const db = () => window.Notara.db;
 
-  return { isOnline, isGuest, isLoggedIn, getUserId, notes, mood, habits, finance, tags, sync };
+  return { isOnline, isGuest, isLoggedIn, getUserId, notes, mood, habits, finance, tags, sync, exportGuestData, downloadExport, importGuestData, hasPendingExport, clearPendingExport };
 })();
