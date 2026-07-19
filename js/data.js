@@ -52,16 +52,13 @@ window.Notara.Data = (() => {
     async getAll() {
       const uid = await _ensureUser();
       const local = await IDB().getAllByIndex('notes', 'user_id', uid);
+      const result = local.filter(n => !n.deleted_at);
       if (isOnline() && isLoggedIn()) {
-        try {
-          const fetchPromise = db().from('notes').select('*').eq('user_id', uid);
-          const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), 8000));
-          const { data: remote } = await Promise.race([fetchPromise, timeoutPromise]);
-          if (remote) await _mergeNotes(uid, remote);
-          return (await IDB().getAllByIndex('notes', 'user_id', uid)).filter(n => !n.deleted_at);
-        } catch { /* offline/timeout fallback */ }
+        db().from('notes').select('*').eq('user_id', uid).then(({ data: remote }) => {
+          if (remote) _mergeNotes(uid, remote);
+        }).catch(() => {});
       }
-      return local.filter(n => !n.deleted_at);
+      return result;
     },
 
     async getById(id) {

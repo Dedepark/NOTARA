@@ -704,26 +704,17 @@ window.Notara = window.Notara || {};
     UI.setActiveNav('home');
     if (_homeCache) { _renderHomeContent(main, _homeCache); } else { main.innerHTML = `<div class="page-loading"><div class="loader-ring"></div></div>`; }
     try {
-      const homeTimeout = new Promise(resolve => setTimeout(() => resolve({ allNotes: [], groups: [], priority: [], tagsMap: {} }), 10000));
-      const homeFetch = (async () => {
-        const [allNotes, groups] = await Promise.all([N.getAll().catch(() => []), _fetchGroups()]);
-        const priority = await N.getPriorityNotes().catch(() => []);
-        const allIds   = allNotes.map(n => n.id);
-        const tagsMap  = allIds.length ? await Tg.getTagsForNotes(allIds).catch(() => ({})) : {};
-        if (window.Notara.Activity) {
-          const actRows = await window.Notara.Activity.getAll().catch(() => []);
-          _activityMap = window.Notara.Activity.toMap(actRows);
-        }
-        return { allNotes, priority, groups, tagsMap };
-      })();
-      const { allNotes, priority, groups, tagsMap } = await Promise.race([homeFetch, homeTimeout]);
-      const newCache = { allNotes, priority, groups, tagsMap };
-      const dataChanged = !_homeCache
-        || allNotes.length !== _homeCache.allNotes.length
-        || allNotes[0]?.updatedAt !== _homeCache.allNotes[0]?.updatedAt
-        || priority.length !== _homeCache.priority.length;
-      _homeCache = newCache;
-      if (dataChanged) _renderHomeContent(main, _homeCache);
+      const allNotes = await N.getAll().catch(() => []);
+      const groups = await _fetchGroups();
+      const priority = await N.getPriorityNotes().catch(() => []);
+      const allIds   = allNotes.map(n => n.id);
+      const tagsMap  = allIds.length ? await Tg.getTagsForNotes(allIds).catch(() => ({})) : {};
+      if (window.Notara.Activity) {
+        const actRows = await window.Notara.Activity.getAll().catch(() => []);
+        _activityMap = window.Notara.Activity.toMap(actRows);
+      }
+      _homeCache = { allNotes, priority, groups, tagsMap };
+      if (document.getElementById('app-main')) _renderHomeContent(main, _homeCache);
     } catch (e) { console.warn('[Notara] Home fetch error:', e); }
     UI.updateStorageIndicator();
   }
