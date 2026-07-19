@@ -693,7 +693,8 @@ window.Notara = window.Notara || {};
     const main = document.getElementById('app-main');
     UI.setTitle('Beranda');
     UI.setActiveNav('home');
-    if (_homeCache) { _renderHomeContent(main, _homeCache); } else { main.innerHTML = `<div class="page-loading"><div class="loader-ring"></div></div>`; }
+    if (_homeCache) { return; }
+    main.innerHTML = `<div class="page-loading"><div class="loader-ring"></div></div>`;
     try {
       const allNotes = await N.getAll().catch(() => []);
       const groups = await _fetchGroups();
@@ -709,6 +710,7 @@ window.Notara = window.Notara || {};
     } catch (e) { console.warn('[Notara] Home fetch error:', e); }
     UI.updateStorageIndicator();
   }
+  function _invalidateHome() { _homeCache = null; }
 
   /* --- CALENDAR MODAL --- */
   let _calYear, _calMonth, _calSelectedDate;
