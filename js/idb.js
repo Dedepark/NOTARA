@@ -111,10 +111,12 @@ window.Notara.IDB = (() => {
   }
 
   function getAllByIndex(store, indexName, value) {
-    const s = _tx(store, 'readonly');
-    if (!s.indexNames.contains(indexName)) return Promise.resolve([]);
-    const idx = s.index(indexName);
-    return _promisify(idx.getAll(value));
+    try {
+      const s = _tx(store, 'readonly');
+      if (!s.indexNames.contains(indexName)) return Promise.resolve([]);
+      const idx = s.index(indexName);
+      return _promisify(idx.getAll(value));
+    } catch { return Promise.resolve([]); }
   }
 
   function count(store) {

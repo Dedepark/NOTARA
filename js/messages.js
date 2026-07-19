@@ -330,6 +330,7 @@ window.Notara.Messages = (() => {
         var errEl = document.getElementById('cs-report-error');
         var btn = document.getElementById('cs-report-submit');
 
+        if (window.Notara.Auth.isGuest()) { errEl.textContent = 'Masuk dulu untuk mengirim laporan.'; return; }
         if (!subject) { errEl.textContent = 'Judul wajib diisi.'; return; }
         if (!content) { errEl.textContent = 'Pesan wajib diisi.'; return; }
 

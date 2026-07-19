@@ -50,6 +50,10 @@ window.Notara.Auth = (() => {
 
     // Listen untuk perubahan auth state
     db().auth.onAuthStateChange((_event, session) => {
+      if (_event === 'SIGNED_OUT' || _event === 'TOKEN_REFRESHED') {
+        // TOKEN_REFRESHED: session baru, update
+        // SIGNED_OUT: session expired/hapus
+      }
       _session = session;
       _user    = session?.user || null;
       if (_onReadyCb) _onReadyCb(isLoggedIn());

@@ -22,6 +22,7 @@ window.Notara.Posts = (() => {
 
   /* ── Buat post baru ───────────────────────── */
   async function create(content) {
+    if (window.Notara.Auth.isGuest()) throw new Error('Masuk dulu untuk mempublikasikan');
     const userId     = window.Notara.Auth.getUser()?.id;
     const authorName = window.Notara.Auth.getName();
     if (!content.trim()) throw new Error('Konten tidak boleh kosong');
@@ -77,6 +78,7 @@ window.Notara.Posts = (() => {
      update posts.likes_count saat INSERT / DELETE.
   ──────────────────────────────────────────────── */
   async function toggleLike(postId) {
+    if (window.Notara.Auth.isGuest()) throw new Error('Masuk dulu untuk like');
     const userId = window.Notara.Auth.getUser()?.id;
     const liked  = await hasLiked(postId);
 
@@ -117,6 +119,7 @@ window.Notara.Posts = (() => {
      update posts.comments_count saat INSERT.
   ──────────────────────────────────────────────── */
   async function addComment(postId, content) {
+    if (window.Notara.Auth.isGuest()) throw new Error('Masuk dulu untuk berkomentar');
     const userId     = window.Notara.Auth.getUser()?.id;
     const authorName = window.Notara.Auth.getName();
     if (!content.trim()) throw new Error('Komentar tidak boleh kosong');

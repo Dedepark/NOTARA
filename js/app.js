@@ -1536,6 +1536,7 @@ window.Notara = window.Notara || {};
     textarea?.addEventListener('input', () => { const len = textarea.value.length; document.getElementById('post-char-count').textContent = `${len} / 500`; submitBtn.disabled = len < 1; });
     submitBtn?.addEventListener('click', async () => {
       const content = textarea.value.trim(); if (!content) return;
+      if (Au.isGuest()) { UI.toast('Masuk dulu untuk mempublikasikan', 'warning'); return; }
       submitBtn.disabled = true; submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Memuat...';
       try { await Pt.create(content); textarea.value = ''; document.getElementById('post-char-count').textContent = '0 / 500'; UI.toast('Berhasil dipublikasikan!', 'success'); _postPage = 0; await _loadFeed(true); } catch (err) { UI.toast('Gagal: ' + err.message, 'error'); }
       submitBtn.disabled = false; submitBtn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Publikasikan';
@@ -1578,6 +1579,7 @@ window.Notara = window.Notara || {};
     const isOwn = post.user_id === currentUserId;
     card.querySelector('.like-btn')?.addEventListener('click', async () => {
       const likeBtn = card.querySelector('.like-btn'); if (!likeBtn || likeBtn.disabled) return;
+      if (Au.isGuest()) { UI.toast('Masuk dulu untuk like', 'warning'); return; }
       const countEl = likeBtn.querySelector('.like-count'); const icon = likeBtn.querySelector('i'); const wasLiked = likeBtn.classList.contains('liked');
       likeBtn.disabled = true;
       if (wasLiked) { likeBtn.classList.remove('liked'); icon.className = 'fa-regular fa-heart'; if (countEl) countEl.textContent = Math.max(0, parseInt(countEl.textContent || '0') - 1); }
@@ -1628,6 +1630,7 @@ window.Notara = window.Notara || {};
       await loadComments();
       document.getElementById('comment-send')?.addEventListener('click', async () => {
         const text = input?.value.trim(); if (!text) return;
+        if (Au.isGuest()) { UI.toast('Masuk dulu untuk berkomentar', 'warning'); return; }
         input.value = '';
         try { await Pt.addComment(post.id, text); await loadComments(); listEl.scrollTop = listEl.scrollHeight; const commentBtn = document.querySelector(`.comment-btn[data-post-id="${post.id}"]`); if (commentBtn) { const span = commentBtn.querySelector('span'); if (span) { const current = parseInt(span.textContent) || 0; span.textContent = `${current + 1} komentar`; } } } catch (err) { UI.toast('Gagal kirim: ' + err.message, 'error'); }
       });
@@ -2046,14 +2049,16 @@ window.Notara = window.Notara || {};
       el.style.opacity = '0.45';
       el.title = 'Fitur ini memerlukan akun';
     });
-    document.querySelectorAll('.nav-section-label').forEach(el => {
-      if (el.textContent === 'Lainnya') {
-        el.insertAdjacentHTML('afterend', '<div class="guest-banner" id="guest-banner"><i class="fa-solid fa-user-secret"></i><span>Mode Tamu — data tersimpan lokal</span><button class="btn-xs btn-accent" id="guest-login-btn">Masuk</button></div>');
-      }
-    });
-    setTimeout(() => {
-      document.getElementById('guest-login-btn')?.addEventListener('click', () => { Au.exitGuestMode(); window.Notara.Guest.clearGuestData(); Au.renderAuthPage(); });
-    }, 100);
+    if (!document.getElementById('guest-banner')) {
+      document.querySelectorAll('.nav-section-label').forEach(el => {
+        if (el.textContent === 'Lainnya') {
+          el.insertAdjacentHTML('afterend', '<div class="guest-banner" id="guest-banner"><i class="fa-solid fa-user-secret"></i><span>Mode Tamu — data tersimpan lokal</span><button class="btn-xs btn-accent" id="guest-login-btn">Masuk</button></div>');
+        }
+      });
+      setTimeout(() => {
+        document.getElementById('guest-login-btn')?.addEventListener('click', () => { Au.exitGuestMode(); window.Notara.Guest.clearGuestData(); Au.renderAuthPage(); });
+      }, 100);
+    }
   }
   if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
 
