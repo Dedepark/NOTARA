@@ -1,8 +1,8 @@
-/* sw.js — Notara Service Worker v4 (offline-first) */
+/* sw.js — Notara Service Worker v5 (force cache bust) */
 'use strict';
 
 // ── Cache names ───────────────────────────────────────────────────────────────
-const CACHE_APP  = 'notara-app-v4';
+const CACHE_APP  = 'notara-app-v5';
 const CACHE_EXT  = 'notara-ext-v1';
 const CACHE_API  = 'notara-api-v1';
 

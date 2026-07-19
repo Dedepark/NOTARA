@@ -33,12 +33,17 @@ window.Notara.Tags = (() => {
     const all  = await getAll();
     const byId = {};
     all.forEach(t => byId[t.id] = t);
-
+    const allRels = await IDB().getAll('note_tags');
+    const relsByNote = {};
+    allRels.forEach(r => {
+      if (!relsByNote[r.note_id]) relsByNote[r.note_id] = [];
+      relsByNote[r.note_id].push(r);
+    });
     const map = {};
-    for (const nid of noteIds) {
-      const rels = await Data().tags.getNoteTags(nid);
+    noteIds.forEach(nid => {
+      const rels = relsByNote[nid] || [];
       map[nid] = rels.map(r => byId[r.tag_id]).filter(Boolean);
-    }
+    });
     return map;
   }
 
