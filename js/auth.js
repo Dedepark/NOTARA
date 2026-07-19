@@ -76,11 +76,15 @@ window.Notara.Auth = (() => {
     if (error) throw error;
     _session = data.session;
     _user    = data.user;
-    if (wasGuest && data.user) {
-      window.Notara.Guest.clearGuestData();
-      window.Notara.Data.sync.mergeGuestData(data.user.id).catch(() => {});
+    if (!_session && data.user) {
+      const { data: loginData } = await db().auth.signInWithPassword({ email, password });
+      _session = loginData.session;
+      _user    = loginData.session?.user || data.user;
     }
-    return data;
+    if (_session && wasGuest && _user) {
+      window.Notara.Guest.clearGuestData();
+      window.Notara.Data.sync.mergeGuestData(_user.id).catch(() => {});
+    }
   }
 
   /* ── Login ───────────────────────────────── */
