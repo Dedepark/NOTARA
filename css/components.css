@@ -1034,3 +1034,707 @@ body.editor-view .mobile-bottom-nav { display: none !important; }
   background: #EF4444 !important;
   border-color: #EF4444 !important;
 }
+
+/* ===== CS MESSAGING SYSTEM ===== */
+
+/* --- CS Mode: hide/show elements --- */
+#app[data-cs-mode="true"] .sidebar-nav { display: none !important; }
+#app[data-cs-mode="true"] .sidebar-footer { display: none !important; }
+#app[data-cs-mode="true"] #app-main { display: flex; flex-direction: column; overflow: hidden; padding: 0; }
+#app-main:has(.msg-detail-page) {
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Messages Page (User Inbox) */
+.messages-page { animation: page-in var(--dur-slow) var(--ease-out) both; width: 100%; }
+.messages-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--space-lg);
+  border-bottom: var(--border-w) solid var(--border-strong);
+  padding-bottom: 8px;
+}
+.messages-count {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-2);
+  border: var(--border-w) solid var(--border-strong);
+  padding: 2px 8px;
+  background: var(--surface);
+  box-shadow: 1px 1px 0 var(--border-strong);
+}
+.msg-ticket-card {
+  padding: var(--space-md) var(--space-lg);
+  background: var(--surface);
+  border: var(--border-w) solid var(--border-strong);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: var(--space-sm);
+  cursor: pointer;
+  transition: all var(--dur-fast);
+}
+.msg-ticket-card:hover {
+  transform: translate(-1px,-1px);
+  box-shadow: var(--shadow-md);
+}
+.msg-ticket-card:active {
+  transform: var(--btn-transform);
+  box-shadow: var(--shadow-active);
+}
+.msg-ticket-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+.msg-ticket-status {
+  font-size: 0.72rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-1);
+}
+.msg-ticket-time {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--text-3);
+}
+.msg-ticket-subject {
+  font-weight: 800;
+  color: var(--text-1);
+  font-size: 0.9rem;
+}
+.msg-ticket-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.ticket-ind {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+.ticket-done {
+  background: rgba(34,197,94,0.12);
+  color: #22c55e;
+  border: 1px solid rgba(34,197,94,0.25);
+}
+.ticket-waiting {
+  background: rgba(239,68,68,0.12);
+  color: #ef4444;
+  border: 1px solid rgba(239,68,68,0.25);
+}
+
+/* Message Detail (Read-Only) */
+.msg-detail-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - var(--topbar-h));
+}
+.msg-detail-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-lg);
+  border-bottom: var(--border-w) solid var(--border-strong);
+  background: var(--bg-2);
+  flex-shrink: 0;
+}
+.msg-detail-info { flex: 1; min-width: 0; }
+.msg-detail-subject {
+  font-weight: 800;
+  font-size: 0.95rem;
+  color: var(--text-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.msg-detail-status {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 2px;
+}
+.msg-detail-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+.msg-detail-footer {
+  padding: var(--space-md) var(--space-lg);
+  border-top: var(--border-w) solid var(--border-strong);
+  background: var(--bg-2);
+  flex-shrink: 0;
+}
+.msg-read-only-notice {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--text-3);
+  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: var(--border-w) solid var(--border-strong);
+  background: var(--surface);
+}
+
+/* Chat Bubbles (User Messages) */
+.msg-bubble {
+  max-width: 78%;
+  padding: var(--space-sm) var(--space-md);
+  border: var(--border-w) solid var(--border-strong);
+  font-size: 0.88rem;
+  box-shadow: var(--shadow-sm);
+}
+.msg-bubble.msg-left {
+  align-self: flex-start;
+  background: var(--surface);
+  border-bottom-left-radius: 2px;
+}
+.msg-bubble.msg-right {
+  align-self: flex-end;
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+  border-bottom-right-radius: 2px;
+}
+.msg-bubble.msg-right .msg-time {
+  color: inherit;
+  opacity: 0.6;
+}
+.msg-text {
+  line-height: 1.5;
+  font-weight: 500;
+}
+.msg-time {
+  font-size: 0.65rem;
+  font-weight: 600;
+  opacity: 0.6;
+  margin-top: 4px;
+}
+.cs-badge-official {
+  font-size: 0.6rem;
+  font-weight: 800;
+  background: var(--accent);
+  color: var(--accent-text);
+  padding: 2px 8px;
+  border: var(--border-w) solid var(--accent);
+  margin-bottom: 4px;
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  box-shadow: 1px 1px 0 var(--border-strong);
+}
+
+/* --- CS Sidebar Wrap (inside sidebar) --- */
+.cs-sidebar-wrap {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.cs-sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-lg);
+  height: 56px;
+  flex-shrink: 0;
+  border-bottom: var(--border-w) solid var(--border-strong);
+  background: var(--bg-2);
+}
+.cs-sidebar-label {
+  font-family: var(--font-display);
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: var(--text-1);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+.cs-sidebar-label i { color: var(--accent); font-size: 0.9rem; }
+.cs-ticket-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-sm);
+}
+
+/* --- CS Topbar (inside topbar) --- */
+.cs-topbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* --- Ticket Item --- */
+.cs-ticket {
+  padding: var(--space-md) var(--space-lg);
+  background: var(--surface);
+  border: var(--border-w) solid var(--border-strong);
+  box-shadow: var(--shadow-sm);
+  cursor: pointer;
+  transition: all var(--dur-fast);
+  margin-bottom: var(--space-sm);
+}
+.cs-ticket:hover {
+  transform: translate(-1px,-1px);
+  box-shadow: var(--shadow-md);
+}
+.cs-ticket:active {
+  transform: var(--btn-transform);
+  box-shadow: var(--shadow-active);
+}
+.cs-ticket.active {
+  background: var(--accent-light);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-accent);
+  transform: translate(-1px,-1px);
+}
+.cs-ticket-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+.cs-ticket-user {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text-1);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cs-ticket-count {
+  font-size: 0.65rem;
+  font-weight: 700;
+  color: var(--text-3);
+  border: var(--border-w) solid var(--border-strong);
+  padding: 1px 6px;
+  background: var(--bg);
+  box-shadow: 1px 1px 0 var(--border-strong);
+}
+.cs-ticket-subject {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-top: 2px;
+  line-height: 1.35;
+}
+.cs-ticket-time {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-3);
+  margin-top: 4px;
+}
+.cs-ticket-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 4px;
+  flex-wrap: wrap;
+}
+
+/* --- Status Dots --- */
+.cs-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: var(--border-w) solid var(--border-strong);
+  flex-shrink: 0;
+}
+.cs-dot-active { background: var(--label-easy); }
+.cs-dot-closed { background: var(--text-3); }
+
+/* --- Chat Header (in main) --- */
+.cs-chat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-md) var(--space-xl);
+  height: 56px;
+  flex-shrink: 0;
+  border-bottom: var(--border-w) solid var(--border-strong);
+  background: var(--bg-2);
+}
+.cs-chat-user {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+}
+.cs-chat-user-info {
+  display: flex;
+  flex-direction: column;
+}
+.cs-chat-name {
+  font-family: var(--font-display);
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--text-1);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cs-copy-name {
+  background: none;
+  border: none;
+  color: var(--text-3);
+  font-size: 0.7rem;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: var(--radius-sm);
+  transition: color var(--dur-fast);
+}
+.cs-copy-name:hover {
+  color: var(--accent);
+}
+.cs-copy-greeting {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-3);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  transition: color var(--dur-fast), border-color var(--dur-fast);
+  flex-shrink: 0;
+}
+.cs-copy-greeting:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+.cs-chat-subject {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-3);
+  margin-top: 1px;
+}
+
+/* --- Chat Body (messages + reply) --- */
+.cs-chat-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* --- Messages Area (in main) --- */
+.cs-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--space-xl) var(--space-2xl);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+.cs-bubble {
+  max-width: 65%;
+  padding: var(--space-md) var(--space-lg);
+  border: var(--border-w) solid var(--border-strong);
+  box-shadow: var(--shadow-sm);
+  word-break: break-word;
+}
+.cs-bubble.cs-out {
+  align-self: flex-end;
+  background: var(--accent);
+  color: var(--accent-text);
+  border-color: var(--accent);
+  box-shadow: var(--shadow-accent);
+}
+.cs-bubble.cs-out .cs-bubble-name,
+.cs-bubble.cs-out .cs-bubble-time,
+.cs-bubble.cs-out .msg-time {
+  color: inherit;
+}
+.cs-bubble.cs-out .cs-bubble-name { opacity: 0.8; }
+.cs-bubble.cs-out .cs-bubble-time { opacity: 0.6; }
+.cs-bubble.cs-in {
+  align-self: flex-start;
+  background: var(--surface);
+}
+.cs-bubble-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  margin-bottom: 4px;
+}
+.cs-bubble-name {
+  font-size: 0.7rem;
+  font-weight: 800;
+  opacity: 0.65;
+}
+.cs-bubble-time {
+  font-size: 0.62rem;
+  font-weight: 600;
+  opacity: 0.45;
+  white-space: nowrap;
+}
+.cs-bubble-text {
+  font-size: 0.84rem;
+  font-weight: 500;
+  line-height: 1.45;
+}
+
+/* --- Reply Form (in main) --- */
+.cs-reply {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-sm);
+  padding: var(--space-md) var(--space-xl);
+  border-top: var(--border-w) solid var(--border-strong);
+  background: var(--bg-2);
+}
+.cs-reply-input {
+  flex: 1;
+  min-height: 40px;
+  max-height: 120px;
+  padding: var(--space-sm) var(--space-md);
+  border: var(--border-w) solid var(--border-strong);
+  background: var(--bg);
+  color: var(--text-1);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 600;
+  resize: none;
+  outline: none;
+  box-shadow: 2px 2px 0 var(--border-strong);
+  transition: all var(--dur-fast);
+}
+.cs-reply-input::placeholder { color: var(--text-3); font-weight: 600; }
+.cs-reply-input:focus { border-color: var(--accent); transform: translate(-1px,-1px); box-shadow: 3px 3px 0 var(--accent); }
+.cs-reply-send {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border: var(--border-w) solid var(--border-strong);
+  background: var(--accent);
+  color: var(--bg);
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--dur-fast);
+}
+.cs-reply-send:hover { transform: translate(-1px,-1px); box-shadow: var(--shadow-md); }
+.cs-reply-send:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+.cs-reply-send:disabled { opacity: 0.4; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* --- Shared --- */
+.cs-empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  color: var(--text-3);
+  font-size: 0.85rem;
+  font-weight: 600;
+  padding: var(--space-xl);
+}
+.cs-empty-state i { font-size: 2rem; opacity: 0.35; }
+.cs-empty-list {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  padding: var(--space-xl);
+  color: var(--text-3);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.cs-empty-list i { font-size: 1.5rem; opacity: 0.35; }
+.cs-icon-btn {
+  width: 34px;
+  height: 34px;
+  border: var(--border-w) solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--dur-fast);
+}
+.cs-icon-btn:hover { background: var(--surface-hover); color: var(--text-1); border-color: var(--accent); transform: translate(-1px,-1px); box-shadow: var(--shadow-md); }
+.cs-icon-btn:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+.cs-pin-form { display: flex; flex-direction: column; gap: var(--space-md); }
+
+/* --- Mobile --- */
+@media (max-width: 600px) {
+  .cs-messages { padding: var(--space-lg); }
+  .cs-bubble { max-width: 85%; }
+  .cs-reply { padding: var(--space-sm) var(--space-md); }
+}
+
+/* ============================================
+   SaaS MODE - CS & Messages Overrides
+   ============================================ */
+[data-style="saas"] .messages-page { }
+[data-style="saas"] .messages-header { border-bottom: 1px solid var(--border); }
+[data-style="saas"] .messages-count { border-radius: var(--radius-full); box-shadow: 0 1px 2px rgba(0,0,0,0.06); border-color: var(--border); }
+[data-style="saas"] .msg-ticket-card { border-radius: var(--radius-lg); box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-color: var(--border); }
+[data-style="saas"] .msg-ticket-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); transform: translateY(-1px); }
+[data-style="saas"] .msg-ticket-card:active { transform: var(--btn-transform); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+[data-style="saas"] .msg-detail-header { border-bottom: 1px solid var(--border); }
+[data-style="saas"] .msg-detail-footer { border-top: 1px solid var(--border); }
+[data-style="saas"] .msg-read-only-notice { border-radius: var(--radius-md); border-color: var(--border); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+[data-style="saas"] .msg-bubble { border-radius: var(--radius-lg); box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-color: var(--border); }
+[data-style="saas"] .msg-bubble.msg-left { border-bottom-left-radius: var(--radius-sm); }
+[data-style="saas"] .msg-bubble.msg-right { border-bottom-right-radius: var(--radius-sm); box-shadow: 0 2px 8px var(--accent-glow); }
+[data-style="saas"] .cs-badge-official { border-radius: var(--radius-full); box-shadow: 0 1px 2px rgba(0,0,0,0.08); }
+
+[data-style="saas"] .cs-sidebar-head { border-bottom: 1px solid var(--border); }
+[data-style="saas"] .cs-ticket { border-radius: var(--radius-md); box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-color: var(--border); margin-bottom: var(--space-xs); }
+[data-style="saas"] .cs-ticket:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.12); transform: translateY(-1px); }
+[data-style="saas"] .cs-ticket:active { transform: var(--btn-transform); box-shadow: 0 1px 2px rgba(0,0,0,0.06); }
+[data-style="saas"] .cs-ticket.active { box-shadow: 0 0 0 2px var(--accent); transform: none; }
+[data-style="saas"] .ticket-ind { border-radius: var(--radius-full); }
+[data-style="saas"] .cs-dot { border-radius: 50%; }
+[data-style="saas"] .cs-chat-head { border-bottom: 1px solid var(--border); }
+[data-style="saas"] .cs-bubble { border-radius: var(--radius-lg); box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-color: var(--border); }
+[data-style="saas"] .cs-bubble.cs-out { box-shadow: 0 2px 8px var(--accent-glow); }
+[data-style="saas"] .cs-reply { border-top: 1px solid var(--border); }
+[data-style="saas"] .cs-reply-input { border-radius: var(--radius-md); box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-color: var(--border); }
+[data-style="saas"] .cs-reply-input:focus { box-shadow: 0 0 0 3px var(--accent-glow); transform: none; }
+[data-style="saas"] .cs-reply-send { border-radius: var(--radius-md); box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
+[data-style="saas"] .cs-reply-send:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateY(-1px); }
+[data-style="saas"] .cs-reply-send:active { transform: var(--btn-transform); box-shadow: none; }
+[data-style="saas"] .cs-icon-btn { border-radius: var(--radius-md); box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+[data-style="saas"] .cs-icon-btn:hover { box-shadow: 0 2px 6px rgba(0,0,0,0.1); transform: translateY(-1px); }
+[data-style="saas"] .cs-icon-btn:active { transform: var(--btn-transform); box-shadow: none; }
+
+/* ============================================
+   RETRO GAZETTE MODE - CS & Messages Overrides
+   ============================================ */
+[data-style="retro-gazette"] .messages-header { border-bottom: 1px solid var(--border-strong); }
+[data-style="retro-gazette"] .messages-count { border-radius: var(--radius-sm); box-shadow: 1px 1px 0px var(--border-strong); font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; }
+[data-style="retro-gazette"] .msg-ticket-card { border-radius: var(--radius-md); border: 1px solid var(--border-strong); box-shadow: 2px 2px 0px var(--border-strong); }
+[data-style="retro-gazette"] .msg-ticket-card:hover { box-shadow: 3px 3px 0px var(--border-strong); transform: translate(-1px, -1px); }
+[data-style="retro-gazette"] .msg-detail-header { border-bottom: 1px solid var(--border-strong); }
+[data-style="retro-gazette"] .msg-detail-footer { border-top: 1px solid var(--border-strong); }
+[data-style="retro-gazette"] .msg-read-only-notice { border-radius: var(--radius-sm); border: 1px solid var(--border-strong); box-shadow: 1px 1px 0px var(--border-strong); font-weight: 800; }
+[data-style="retro-gazette"] .msg-bubble { border-radius: var(--radius-md); border: 1px solid var(--border-strong); box-shadow: 2px 2px 0px var(--border-strong); }
+[data-style="retro-gazette"] .msg-bubble.msg-left { border-bottom-left-radius: var(--radius-sm); }
+[data-style="retro-gazette"] .msg-bubble.msg-right { border-bottom-right-radius: var(--radius-sm); box-shadow: 2px 2px 0px var(--border-strong); }
+[data-style="retro-gazette"] .cs-badge-official { border-radius: var(--radius-full); box-shadow: 1px 1px 0px var(--border-strong); font-weight: 900; letter-spacing: 0.05em; text-transform: uppercase; }
+
+[data-style="retro-gazette"] .cs-sidebar-head { border-bottom: 1px solid var(--border-strong); }
+[data-style="retro-gazette"] .cs-sidebar-label { letter-spacing: 0.1em; }
+[data-style="retro-gazette"] .cs-ticket { border-radius: var(--radius-md); border: 1px solid var(--border-strong); box-shadow: 2px 2px 0px var(--border-strong); margin-bottom: var(--space-xs); }
+[data-style="retro-gazette"] .cs-ticket:hover { box-shadow: 3px 3px 0px var(--border-strong); transform: translate(-1px, -1px); }
+[data-style="retro-gazette"] .cs-ticket:active { transform: translate(1px, 1px); box-shadow: 0 0 0 transparent; }
+[data-style="retro-gazette"] .cs-ticket.active { box-shadow: 3px 3px 0px var(--accent); border-color: var(--accent); transform: translate(-1px, -1px); }
+[data-style="retro-gazette"] .ticket-ind { border-radius: var(--radius-sm); font-weight: 900; letter-spacing: 0.03em; }
+[data-style="retro-gazette"] .cs-dot { border-radius: var(--radius-full); }
+[data-style="retro-gazette"] .cs-chat-head { border-bottom: 1px solid var(--border-strong); }
+[data-style="retro-gazette"] .cs-bubble { border-radius: var(--radius-md); border: 1px solid var(--border-strong); box-shadow: 2px 2px 0px var(--border-strong); }
+[data-style="retro-gazette"] .cs-bubble.cs-out { box-shadow: 2px 2px 0px var(--border-strong); }
+[data-style="retro-gazette"] .cs-reply { border-top: 1px solid var(--border-strong); }
+[data-style="retro-gazette"] .cs-reply-input { border-radius: var(--radius-sm); box-shadow: 2px 2px 0px var(--border-strong); }
+[data-style="retro-gazette"] .cs-reply-input:focus { box-shadow: 3px 3px 0px var(--accent); transform: translate(-1px,-1px); }
+[data-style="retro-gazette"] .cs-reply-send { border-radius: var(--radius-sm); box-shadow: 2px 2px 0px var(--border-strong); }
+[data-style="retro-gazette"] .cs-reply-send:hover { box-shadow: 3px 3px 0px var(--border-strong); transform: translate(-1px, -1px); }
+[data-style="retro-gazette"] .cs-reply-send:active { transform: translate(1px, 1px); box-shadow: none; }
+[data-style="retro-gazette"] .cs-icon-btn { border-radius: var(--radius-sm); box-shadow: 1px 1px 0px var(--border-strong); }
+[data-style="retro-gazette"] .cs-icon-btn:hover { box-shadow: 2px 2px 0px var(--border-strong); transform: translate(-1px, -1px); }
+[data-style="retro-gazette"] .cs-icon-btn:active { transform: translate(1px, 1px); box-shadow: none; }
+
+/* ============================================
+   SKEUOMORPHISM MODE - CS & Messages Overrides
+   ============================================ */
+[data-style="skeuomorphism"] .messages-header { border-bottom: 1px solid var(--border); }
+[data-style="skeuomorphism"] .messages-count { border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); border-color: var(--border); }
+[data-style="skeuomorphism"] .msg-ticket-card { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); background: var(--surface); border-color: var(--border); }
+[data-style="skeuomorphism"] .msg-ticket-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+[data-style="skeuomorphism"] .msg-detail-header { border-bottom: 1px solid var(--border); }
+[data-style="skeuomorphism"] .msg-detail-footer { border-top: 1px solid var(--border); }
+[data-style="skeuomorphism"] .msg-read-only-notice { border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border-color: var(--border); background: var(--surface); }
+[data-style="skeuomorphism"] .msg-bubble { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border-color: var(--border); }
+[data-style="skeuomorphism"] .msg-bubble.msg-left { border-bottom-left-radius: var(--radius-sm); background: var(--surface); }
+[data-style="skeuomorphism"] .msg-bubble.msg-right { border-bottom-right-radius: var(--radius-sm); box-shadow: var(--shadow-md); }
+[data-style="skeuomorphism"] .cs-badge-official { border-radius: var(--radius-full); box-shadow: var(--shadow-sm); }
+
+[data-style="skeuomorphism"] .cs-sidebar-head { border-bottom: 1px solid var(--border); }
+[data-style="skeuomorphism"] .cs-ticket { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); background: var(--surface); border-color: var(--border); margin-bottom: var(--space-xs); }
+[data-style="skeuomorphism"] .cs-ticket:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+[data-style="skeuomorphism"] .cs-ticket:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+[data-style="skeuomorphism"] .cs-ticket.active { box-shadow: 0 0 0 2px var(--accent), var(--shadow-md); }
+[data-style="skeuomorphism"] .ticket-ind { border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
+[data-style="skeuomorphism"] .cs-dot { border-radius: 50%; box-shadow: var(--shadow-sm); }
+[data-style="skeuomorphism"] .cs-chat-head { border-bottom: 1px solid var(--border); }
+[data-style="skeuomorphism"] .cs-bubble { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border-color: var(--border); }
+[data-style="skeuomorphism"] .cs-bubble.cs-in { background: var(--surface); }
+[data-style="skeuomorphism"] .cs-bubble.cs-out { box-shadow: var(--shadow-md); }
+[data-style="skeuomorphism"] .cs-reply { border-top: 1px solid var(--border); }
+[data-style="skeuomorphism"] .cs-reply-input { border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border-color: var(--border); }
+[data-style="skeuomorphism"] .cs-reply-input:focus { box-shadow: 0 0 0 3px var(--accent-glow), var(--shadow-sm); transform: none; }
+[data-style="skeuomorphism"] .cs-reply-send { border-radius: var(--radius-md); box-shadow: var(--shadow-md); }
+[data-style="skeuomorphism"] .cs-reply-send:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+[data-style="skeuomorphism"] .cs-reply-send:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+[data-style="skeuomorphism"] .cs-icon-btn { border-radius: var(--radius-md); box-shadow: var(--shadow-sm); }
+[data-style="skeuomorphism"] .cs-icon-btn:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+[data-style="skeuomorphism"] .cs-icon-btn:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+
+/* ============================================
+   NEUMORPHISM MODE - CS & Messages Overrides
+   ============================================ */
+[data-style="neumorphism"] .messages-header { border-bottom: none; }
+[data-style="neumorphism"] .messages-count { border-radius: var(--radius-full); box-shadow: var(--shadow-sm); border: none; background: var(--bg); }
+[data-style="neumorphism"] .msg-ticket-card { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: none; background: var(--bg); }
+[data-style="neumorphism"] .msg-ticket-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+[data-style="neumorphism"] .msg-detail-header { border-bottom: none; }
+[data-style="neumorphism"] .msg-detail-footer { border-top: none; }
+[data-style="neumorphism"] .msg-read-only-notice { border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border: none; background: var(--bg); }
+[data-style="neumorphism"] .msg-bubble { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: none; }
+[data-style="neumorphism"] .msg-bubble.msg-left { border-bottom-left-radius: var(--radius-sm); background: var(--bg); }
+[data-style="neumorphism"] .msg-bubble.msg-right { border-bottom-right-radius: var(--radius-sm); box-shadow: var(--shadow-md); }
+[data-style="neumorphism"] .cs-badge-official { border-radius: var(--radius-full); box-shadow: var(--shadow-sm); border: none; }
+
+[data-style="neumorphism"] .cs-sidebar-head { border-bottom: none; }
+[data-style="neumorphism"] .cs-ticket { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: none; background: var(--bg); margin-bottom: var(--space-xs); }
+[data-style="neumorphism"] .cs-ticket:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+[data-style="neumorphism"] .cs-ticket:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+[data-style="neumorphism"] .cs-ticket.active { box-shadow: var(--shadow-active); border: none; background: var(--bg); color: var(--accent); }
+[data-style="neumorphism"] .ticket-ind { border-radius: var(--radius-full); box-shadow: var(--shadow-sm); }
+[data-style="neumorphism"] .cs-dot { border-radius: 50%; box-shadow: var(--shadow-sm); border: none; }
+[data-style="neumorphism"] .cs-chat-head { border-bottom: none; box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+[data-style="neumorphism"] .cs-bubble { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: none; }
+[data-style="neumorphism"] .cs-bubble.cs-in { background: var(--bg); }
+[data-style="neumorphism"] .cs-bubble.cs-out { box-shadow: var(--shadow-md); }
+[data-style="neumorphism"] .cs-reply { border-top: none; }
+[data-style="neumorphism"] .cs-reply-input { border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border: none; background: var(--bg); }
+[data-style="neumorphism"] .cs-reply-input:focus { box-shadow: var(--shadow-active); transform: none; }
+[data-style="neumorphism"] .cs-reply-send { border-radius: var(--radius-md); box-shadow: var(--shadow-md); border: none; }
+[data-style="neumorphism"] .cs-reply-send:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+[data-style="neumorphism"] .cs-reply-send:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }
+[data-style="neumorphism"] .cs-icon-btn { border-radius: var(--radius-md); box-shadow: var(--shadow-sm); border: none; background: var(--bg); }
+[data-style="neumorphism"] .cs-icon-btn:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+[data-style="neumorphism"] .cs-icon-btn:active { transform: var(--btn-transform); box-shadow: var(--shadow-active); }

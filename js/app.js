@@ -1327,7 +1327,7 @@ window.Notara = window.Notara || {};
       <div class="search-page page-enter">
         <div class="search-input-wrap">
           <i class="fa-solid fa-magnifying-glass search-input-icon"></i>
-          <input class="search-input" id="search-input" placeholder="Cari catatan..." value="${_esc(query)}" autofocus>
+          <input class="search-input" id="search-input" placeholder="Cari catatan..." value="${_esc(query)}">
         </div>
         <div class="filter-dropdown-row">
           <div class="dropdown-wrap" data-dropdown="filter">
@@ -1403,6 +1403,7 @@ window.Notara = window.Notara || {};
     });
     let _debounce;
     document.getElementById('search-input')?.addEventListener('input', () => { clearTimeout(_debounce); _debounce = setTimeout(doSearch, 300); });
+    setTimeout(() => document.getElementById('search-input')?.focus(), 50);
     doSearch();
   }
 
@@ -1902,15 +1903,21 @@ window.Notara = window.Notara || {};
             <button id="sidebar-close" class="icon-btn sidebar-close-btn" aria-label="Tutup sidebar"><i class="fa-solid fa-xmark"></i></button>
           </div>
           <nav class="sidebar-nav">
+            <div class="nav-section-label">Navigasi</div>
             <a href="#home" class="nav-item active" data-page="home"><span class="nav-icon"><i class="fa-solid fa-house"></i></span><span class="nav-label">Beranda</span></a>
             <a href="#search" class="nav-item" data-page="search"><span class="nav-icon"><i class="fa-solid fa-magnifying-glass"></i></span><span class="nav-label">Cari</span></a>
+            <div class="nav-section-label">Konten</div>
             <a href="#timeline" class="nav-item" data-page="timeline"><span class="nav-icon"><i class="fa-regular fa-clock"></i></span><span class="nav-label">Timeline</span></a>
             <a href="#posts" class="nav-item" data-page="posts"><span class="nav-icon"><i class="fa-solid fa-quote-left"></i></span><span class="nav-label">Publikasi</span></a>
-            <a href="#mood" class="nav-item" data-page="mood"><span class="nav-icon"><i class="ph ph-smiley" style="font-size:1rem"></i></span><span class="nav-label">Mood</span></a>
+            <div class="nav-section-label">Pelacakan</div>
+            <a href="#mood" class="nav-item" data-page="mood"><span class="nav-icon"><i class="ph ph-smiley" style="font-size:1rem"></i></span><span class="nav-label">Perasaan</span></a>
             <a href="#habits" class="nav-item" data-page="habits"><span class="nav-icon"><i class="ph ph-check-circle" style="font-size:1rem"></i></span><span class="nav-label">Kebiasaan</span></a>
             <a href="#finance" class="nav-item" data-page="finance"><span class="nav-icon"><i class="ph ph-wallet" style="font-size:1rem"></i></span><span class="nav-label">Keuangan</span></a>
+            <div class="nav-section-label">Lainnya</div>
             <a href="#tags" class="nav-item" data-page="tags"><span class="nav-icon"><i class="fa-solid fa-tags"></i></span><span class="nav-label">Tag</span></a>
+            <a href="#messages" class="nav-item" data-page="messages"><span class="nav-icon"><i class="fa-solid fa-envelope"></i></span><span class="nav-label">Pesan</span></a>
             <a href="#trash" class="nav-item" data-page="trash"><span class="nav-icon"><i class="fa-solid fa-trash-can"></i></span><span class="nav-label">Sampah</span></a>
+            <div class="nav-section-label">Sistem</div>
             <a href="#settings" class="nav-item" data-page="settings"><span class="nav-icon"><i class="fa-solid fa-gear"></i></span><span class="nav-label">Pengaturan</span></a>
           </nav>
           <div class="sidebar-footer">
@@ -1970,6 +1977,7 @@ window.Notara = window.Notara || {};
 
     _initKeyboardShortcuts();
     _initPomodoro();
+    if (window.Notara.CSPanel) window.Notara.CSPanel.initShortcutListener();
 
     R.on('home',     () => { UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); _renderHome(); });
     R.on('read/:id', p  => { _exitMultiSelect(); UI.closePopup(); Ed.unmount(); _renderRead(p.id); });
@@ -1984,6 +1992,7 @@ window.Notara = window.Notara || {};
     R.on('mood',     () => { _exitMultiSelect(); UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); window.Notara.MoodTracker.renderPage(); });
     R.on('habits',   () => { _exitMultiSelect(); UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); window.Notara.HabitTracker.renderPage(); });
     R.on('finance',  () => { _exitMultiSelect(); UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); window.Notara.FinanceTracker.renderPage(); });
+    R.on('messages', () => { _exitMultiSelect(); UI.closePopup(); Ed.unmount(); _restoreTopbarFromReader(); window.Notara.Messages.renderInbox(); });
 
     N.onChange(() => UI.updateStorageIndicator());
     Rm.start();
@@ -2018,4 +2027,13 @@ window.Notara = window.Notara || {};
   let _appMounted = false;
   async function init() { S.init(); await Au.init(loggedIn => { if (loggedIn) { _resetAppState(); if (!_appMounted) { _appMounted = true; _mountApp(); } } else { _appMounted = false; _resetAppState(); if (window.Notara.UpdateChecker) window.Notara.UpdateChecker.stopRealtime(); Au.renderAuthPage(); } }); }
   if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
+
+  console.log('%c ____  _   _    _    _   _ _____ __  __    _    _   _ ', 'color:#7B2D8E;font-weight:bold');
+  console.log('%c/ ___|| | | |  / \\  | \\ | |_   _|  \\/  |  / \\  | \\ | |', 'color:#7B2D8E;font-weight:bold');
+  console.log('%c\\___ \\| |_| | / _ \\ |  \\| | | | | |\\/| | / _ \\ |  \\| |', 'color:#E84855;font-weight:bold');
+  console.log('%c ___) |  _  |/ ___ \\| |\\  | | | | |  | |/ ___ \\| |\\  |', 'color:#E84855;font-weight:bold');
+  console.log('%c|____/|_| |_/_/   \\_\\_| \\_| |_| |_|  |_/_/   \\_\\_| \\_|', 'color:#E84855;font-weight:bold');
+  console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color:#50546a');
+  console.log('%c  hayo mau ngapain? 👀', 'color:#eab308;font-size:14px;font-weight:bold');
+  console.log('%c━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━', 'color:#50546a');
 })();

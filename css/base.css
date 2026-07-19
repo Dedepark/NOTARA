@@ -53,7 +53,9 @@ html { scrollbar-width: none; }
 [data-style="retro-gazette"] .pomo-expanded,
 [data-style="retro-gazette"] .pomo-collapsed,
 [data-style="retro-gazette"] .note-type-option,
-[data-style="retro-gazette"] .mobile-fab {
+[data-style="retro-gazette"] .mobile-fab,
+[data-style="retro-gazette"] .cs-ticket,
+[data-style="retro-gazette"] .msg-ticket-card {
   position: relative;
 }
 [data-style="retro-gazette"] .note-card::after,
@@ -72,7 +74,9 @@ html { scrollbar-width: none; }
 [data-style="retro-gazette"] .pomo-expanded::after,
 [data-style="retro-gazette"] .pomo-collapsed::after,
 [data-style="retro-gazette"] .note-type-option::after,
-[data-style="retro-gazette"] .mobile-fab::after {
+[data-style="retro-gazette"] .mobile-fab::after,
+[data-style="retro-gazette"] .cs-ticket::after,
+[data-style="retro-gazette"] .msg-ticket-card::after {
   content: '';
   position: absolute;
   inset: 0;

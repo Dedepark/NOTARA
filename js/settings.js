@@ -401,44 +401,22 @@ window.Notara.Settings = (() => {
           <div class="settings-card">
             <div class="settings-item">
               <div class="settings-item-left">
-                <span class="settings-item-label">Dede Putra Cahyana</span>
-                <span class="settings-item-sub">Developer & Designer</span>
+                <span class="settings-item-label">ZERO</span>
+                <span class="settings-item-sub">From Zero To Zero</span>
               </div>
-              <i class="fa-solid fa-circle-user" style="font-size:1.8rem;color:var(--accent)"></i>
+              <img src="assets/img/zero-icon.png" alt="ZERO" style="width:42px;height:42px;border-radius:50%;object-fit:cover">
             </div>
             <div class="divider" style="margin:0"></div>
-            <div class="settings-item">
+            <div class="settings-item" style="cursor:pointer" id="setting-cs-report">
               <div class="settings-item-left">
-                <span class="settings-item-label" style="font-size:0.8rem;color:var(--text-3);text-transform:uppercase;letter-spacing:0.06em;font-weight:600">
-                  Kritik &amp; Saran
+                <span class="settings-item-label">
+                  <i class="fa-solid fa-headset" style="color:var(--accent);margin-right:8px"></i>
+                  Kirim Laporan ke Customer Service
                 </span>
-                <span class="settings-item-sub">Hubungi via platform di bawah ini</span>
+                <span class="settings-item-sub">Kirim pesan, kritik, atau laporan bug</span>
               </div>
+              <i class="fa-solid fa-chevron-right" style="color:var(--text-3);font-size:0.8rem"></i>
             </div>
-            <a href="mailto:zadpropc@gmail.com" class="settings-item settings-item-link">
-              <div class="settings-item-left">
-                <span class="settings-item-label"><i class="fa-solid fa-envelope" style="color:#ea4335;margin-right:8px"></i>Email</span>
-              </div>
-              <i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--text-3);font-size:0.8rem"></i>
-            </a>
-            <a href="https://wa.me/6289527003290?text=Halo%20Dede%2C%20aku%20punya%20kritik%2Fsaran%20tentang%20aplikasi%20Notara%3A%20" target="_blank" rel="noopener" class="settings-item settings-item-link">
-              <div class="settings-item-left">
-                <span class="settings-item-label"><i class="fa-brands fa-whatsapp" style="color:#25d366;margin-right:8px"></i>WhatsApp</span>
-              </div>
-              <i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--text-3);font-size:0.8rem"></i>
-            </a>
-            <a href="https://www.instagram.com/zadostrix/" target="_blank" rel="noopener" class="settings-item settings-item-link">
-              <div class="settings-item-left">
-                <span class="settings-item-label"><i class="fa-brands fa-instagram" style="color:#e1306c;margin-right:8px"></i>Instagram</span>
-              </div>
-              <i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--text-3);font-size:0.8rem"></i>
-            </a>
-            <a href="https://www.tiktok.com/@zadostrix?is_from_webapp=1&sender_device=pc" target="_blank" rel="noopener" class="settings-item settings-item-link">
-              <div class="settings-item-left">
-                <span class="settings-item-label"><i class="fa-brands fa-tiktok" style="color:var(--text-1);margin-right:8px"></i>TikTok</span>
-              </div>
-              <i class="fa-solid fa-arrow-up-right-from-square" style="color:var(--text-3);font-size:0.8rem"></i>
-            </a>
           </div>
         </div>
       </div>
@@ -580,6 +558,10 @@ window.Notara.Settings = (() => {
         await window.Notara.Auth.logout();
         window.location.reload();
       }
+    });
+
+    document.getElementById('setting-cs-report')?.addEventListener('click', () => {
+      window.Notara.Messages.showNewReportModal();
     });
 
     document.getElementById('setting-clear')?.addEventListener('click', async () => {

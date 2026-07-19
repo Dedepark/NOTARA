@@ -46,6 +46,7 @@ window.Notara.UI = (() => {
 
     function close() {
       overlay.classList.remove('open');
+      document.activeElement?.blur();
       overlay.setAttribute('aria-hidden', 'true');
       elBody.innerHTML = '';
       elFoot.innerHTML = '';
@@ -263,7 +264,6 @@ window.Notara.UI = (() => {
   /* ── PWA Install ───────────────────────────── */
   let _deferredInstall = null;
   window.addEventListener('beforeinstallprompt', e => {
-    e.preventDefault();
     _deferredInstall = e;
   });
 

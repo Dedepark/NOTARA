@@ -19,11 +19,11 @@ window.Notara.FinanceTracker = (() => {
   }
 
   const CATEGORY_ICONS = {
-    'Makanan': 'burger', 'Transportasi': 'bus', 'Belanja': 'cart-shopping',
-    'Tagihan': 'receipt', 'Hiburan': 'gamepad', 'Kesehatan': 'heart-pulse',
-    'Pendidikan': 'graduation-cap', 'Lainnya': 'ellipsis',
-    'Gaji': 'money-bill-wave', 'Freelance': 'laptop-code',
-    'Investasi': 'chart-line', 'Hadiah': 'gift',
+    'Makanan': 'hamburger', 'Transportasi': 'bus', 'Belanja': 'shopping-cart',
+    'Tagihan': 'receipt', 'Hiburan': 'game-controller', 'Kesehatan': 'heartbeat',
+    'Pendidikan': 'graduation-cap', 'Lainnya': 'dots-three',
+    'Gaji': 'money', 'Freelance': 'laptop',
+    'Investasi': 'chart-line-up', 'Hadiah': 'gift',
   };
 
   const CATEGORY_COLORS = {
@@ -204,7 +204,10 @@ window.Notara.FinanceTracker = (() => {
         </div>
         <div class="finance-field">
           <label>Nominal</label>
-          <input type="number" id="finance-amount" placeholder="0" min="0" step="1000">
+          <div class="finance-amount-wrap" id="finance-amount-wrap">
+            <span class="finance-amount-prefix" id="finance-amount-prefix">-</span>
+            <input type="number" id="finance-amount" placeholder="0" min="0" step="1000">
+          </div>
         </div>
         <div class="finance-field">
           <label>Kategori</label>
@@ -229,8 +232,30 @@ window.Notara.FinanceTracker = (() => {
           txType = btn.dataset.type;
           const select = document.getElementById('finance-category');
           if (select) select.innerHTML = catOptions(txType);
+          _updateAmountStyle();
         });
       });
+
+      const amountInput = document.getElementById('finance-amount');
+      if (amountInput) {
+        amountInput.addEventListener('input', _updateAmountStyle);
+        _updateAmountStyle();
+      }
+
+      function _updateAmountStyle() {
+        const input = document.getElementById('finance-amount');
+        const prefix = document.getElementById('finance-amount-prefix');
+        if (!input || !prefix) return;
+        if (txType === 'expense') {
+          input.style.color = 'var(--label-hard)';
+          prefix.textContent = '-';
+          prefix.style.color = 'var(--label-hard)';
+        } else {
+          input.style.color = 'var(--label-easy)';
+          prefix.textContent = '+';
+          prefix.style.color = 'var(--label-easy)';
+        }
+      }
 
       document.getElementById('finance-form-save')?.addEventListener('click', async () => {
         const amount = parseFloat(document.getElementById('finance-amount')?.value);

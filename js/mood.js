@@ -14,7 +14,14 @@ window.Notara.MoodTracker = (() => {
     { value: 'very_sad',   icon: 'ph-smiley-angry', label: 'Buruk',  color: 'red' },
   ];
 
-  const TRIGGERS = ['Pekerjaan', 'Kesehatan', 'Keluarga', 'Teman', 'Cuaca', 'Lainnya'];
+  const TRIGGERS = [
+    { value: 'Pekerjaan', icon: 'ph-briefcase', color: '#3b82f6' },
+    { value: 'Kesehatan', icon: 'ph-heartbeat', color: '#ef4444' },
+    { value: 'Keluarga', icon: 'ph-house', color: '#f97316' },
+    { value: 'Teman', icon: 'ph-users-three', color: '#8b5cf6' },
+    { value: 'Cuaca', icon: 'ph-sun', color: '#eab308' },
+    { value: 'Lainnya', icon: 'ph-dots-three', color: '#6b7280' },
+  ];
 
   function _userId() { return Au.getUser()?.id; }
   function _today() { return new Date().toISOString().slice(0, 10); }
@@ -126,13 +133,14 @@ window.Notara.MoodTracker = (() => {
     MOODS.forEach(m => {
       html += `<button class="mood-btn" data-mood="${m.value}" data-color="${m.color}">${_moodIcon(m.value, false)}<span>${m.label}</span></button>`;
     });
-    html += `</div>`;
+    html += `</div></div>`;
 
+    html += `<div class="mood-form-card">`;
     html += `<div class="mood-triggers">`;
-    html += `<div class="mood-triggers-label"><i class="ph ph-push-pin"></i> Pemicu (opsional)</div>`;
+    html += `<div class="mood-triggers-label" id="mood-triggers-label"><i class="ph ph-push-pin"></i> Apa yang memengaruhi perasaanmu?</div>`;
     html += `<div class="mood-trigger-grid" id="mood-triggers">`;
     TRIGGERS.forEach(t => {
-      html += `<button class="mood-trigger-btn" data-trigger="${t}">${t}</button>`;
+      html += `<button class="mood-trigger-btn" data-trigger="${t.value}" style="--trigger-clr:${t.color}"><i class="ph ${t.icon}"></i><span>${t.value}</span></button>`;
     });
     html += `</div></div>`;
 
@@ -214,6 +222,12 @@ window.Notara.MoodTracker = (() => {
           picker.querySelectorAll('.mood-btn').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
           selectedMood = btn.dataset.mood;
+          const label = document.getElementById('mood-triggers-label');
+          if (label) {
+            const moodData = MOODS.find(m => m.value === selectedMood);
+            const moodWord = moodData ? moodData.label.toLowerCase() : 'begitu';
+            label.innerHTML = `<i class="ph ph-push-pin"></i> Mengapa kamu merasa ${moodWord} hari ini?`;
+          }
           _updateSaveBtn();
         });
       });
@@ -223,10 +237,26 @@ window.Notara.MoodTracker = (() => {
     if (triggerGrid) {
       triggerGrid.querySelectorAll('.mood-trigger-btn').forEach(btn => {
         btn.addEventListener('click', () => {
-          btn.classList.toggle('active');
+          const isActive = btn.classList.toggle('active');
           const t = btn.dataset.trigger;
-          if (selectedTriggers.has(t)) selectedTriggers.delete(t);
-          else selectedTriggers.add(t);
+          const iconEl = btn.querySelector('i');
+          const orig = TRIGGERS.find(x => x.value === t);
+          if (isActive) {
+            selectedTriggers.add(t);
+            iconEl.className = 'ph ph-check-circle';
+            btn.style.background = 'var(--bg)';
+            btn.style.borderColor = 'var(--trigger-clr)';
+            btn.style.color = 'var(--trigger-clr)';
+            iconEl.style.color = 'var(--trigger-clr)';
+          } else {
+            selectedTriggers.delete(t);
+            iconEl.className = 'ph ' + (orig ? orig.icon : 'ph-check');
+            btn.style.background = '';
+            btn.style.borderColor = '';
+            btn.style.color = '';
+            iconEl.style.color = '';
+          }
+          void btn.offsetHeight;
         });
       });
     }
