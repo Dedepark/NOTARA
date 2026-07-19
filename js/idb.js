@@ -5,7 +5,7 @@ window.Notara = window.Notara || {};
 
 window.Notara.IDB = (() => {
   const DB_NAME = 'notara-offline-v1';
-  const DB_VERSION = 1;
+  const DB_VERSION = 2;
   let _db = null;
   let _ready = false;
 
@@ -13,7 +13,7 @@ window.Notara.IDB = (() => {
     notes:        { keyPath: 'id', indexes: [{ name: 'user_id' }, { name: 'updated_at' }] },
     mood:         { keyPath: 'id', indexes: [{ name: 'user_id' }, { name: 'date' }] },
     habit_lists:  { keyPath: 'id', indexes: [{ name: 'user_id' }] },
-    habit_logs:   { keyPath: 'id', indexes: [{ name: 'habit_id' }, { name: 'date' }] },
+    habit_logs:   { keyPath: 'id', indexes: [{ name: 'user_id' }, { name: 'habit_id' }, { name: 'date' }] },
     finance_tx:   { keyPath: 'id', indexes: [{ name: 'user_id' }, { name: 'transaction_date' }] },
     finance_cat:  { keyPath: 'id', indexes: [{ name: 'user_id' }] },
     tags:         { keyPath: 'id', indexes: [{ name: 'user_id' }] },
@@ -36,6 +36,14 @@ window.Notara.IDB = (() => {
             });
             (cfg.indexes || []).forEach(idx => {
               store.createIndex(idx.name, idx.name, { unique: false });
+            });
+          } else if (e.oldVersion < 2) {
+            const tx = e.target.transaction;
+            const store = tx.objectStore(name);
+            (cfg.indexes || []).forEach(idx => {
+              if (!store.indexNames.contains(idx.name)) {
+                store.createIndex(idx.name, idx.name, { unique: false });
+              }
             });
           }
         });
@@ -104,6 +112,7 @@ window.Notara.IDB = (() => {
 
   function getAllByIndex(store, indexName, value) {
     const s = _tx(store, 'readonly');
+    if (!s.indexNames.contains(indexName)) return Promise.resolve([]);
     const idx = s.index(indexName);
     return _promisify(idx.getAll(value));
   }
