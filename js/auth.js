@@ -84,9 +84,8 @@ window.Notara.Auth = (() => {
       }
     }
     if (_session && wasGuest && _user) {
-      window.Notara.Data.sync.mergeGuestData(_user.id).then(() => {
-        window.Notara.Guest.clearGuestData();
-      }).catch(() => {});
+      try { await window.Notara.Data.sync.mergeGuestData(_user.id); } catch {}
+      window.Notara.Guest.clearGuestData();
     }
     if (!_session) throw new Error('Registrasi berhasil tapi sesi tidak ditemukan. Coba login manual.');
   }
@@ -99,9 +98,8 @@ window.Notara.Auth = (() => {
     _session = data.session;
     _user    = data.user;
     if (wasGuest && data.user) {
-      window.Notara.Data.sync.mergeGuestData(data.user.id).then(() => {
-        window.Notara.Guest.clearGuestData();
-      }).catch(() => {});
+      try { await window.Notara.Data.sync.mergeGuestData(data.user.id); } catch {}
+      window.Notara.Guest.clearGuestData();
     }
     return data;
   }
