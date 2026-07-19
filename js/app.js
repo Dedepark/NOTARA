@@ -693,7 +693,11 @@ window.Notara = window.Notara || {};
     const main = document.getElementById('app-main');
     UI.setTitle('Beranda');
     UI.setActiveNav('home');
-    if (_homeCache) { return; }
+    if (_homeCache) {
+      _renderHomeContent(main, _homeCache);
+      UI.updateStorageIndicator();
+      return;
+    }
     main.innerHTML = `<div class="page-loading"><div class="loader-ring"></div></div>`;
     try {
       const allNotes = await N.getAll().catch(() => []);
