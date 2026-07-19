@@ -704,10 +704,10 @@ window.Notara = window.Notara || {};
     UI.setActiveNav('home');
     if (_homeCache) { _renderHomeContent(main, _homeCache); } else { main.innerHTML = `<div class="page-loading"><div class="loader-ring"></div></div>`; }
     try {
-      const [allNotes, groups] = await Promise.all([N.getAll(), _fetchGroups()]);
-      const priority = await N.getPriorityNotes();
+      const [allNotes, groups] = await Promise.all([N.getAll().catch(() => []), _fetchGroups().catch(() => ({}))]);
+      const priority = await N.getPriorityNotes().catch(() => []);
       const allIds   = allNotes.map(n => n.id);
-      const tagsMap  = await Tg.getTagsForNotes(allIds).catch(() => ({}));
+      const tagsMap  = allIds.length ? await Tg.getTagsForNotes(allIds).catch(() => ({})) : {};
       if (window.Notara.Activity) {
         const actRows = await window.Notara.Activity.getAll().catch(() => []);
         _activityMap = window.Notara.Activity.toMap(actRows);
