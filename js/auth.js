@@ -77,14 +77,17 @@ window.Notara.Auth = (() => {
     _session = data.session;
     _user    = data.user;
     if (!_session && data.user) {
-      const { data: loginData } = await db().auth.signInWithPassword({ email, password });
-      _session = loginData.session;
-      _user    = loginData.session?.user || data.user;
+      const { data: loginData, error: loginErr } = await db().auth.signInWithPassword({ email, password });
+      if (!loginErr) {
+        _session = loginData.session;
+        _user    = loginData.session?.user || data.user;
+      }
     }
     if (_session && wasGuest && _user) {
       window.Notara.Guest.clearGuestData();
       window.Notara.Data.sync.mergeGuestData(_user.id).catch(() => {});
     }
+    if (!_session) throw new Error('Registrasi berhasil tapi sesi tidak ditemukan. Coba login manual.');
   }
 
   /* ── Login ───────────────────────────────── */

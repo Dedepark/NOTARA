@@ -2042,7 +2042,7 @@ window.Notara = window.Notara || {};
   }
 
   let _appMounted = false;
-  async function init() { S.init(); await window.Notara.IDB.init(); await Au.init(loggedIn => { if (loggedIn || Au.isGuest()) { _resetAppState(); if (!_appMounted) { _appMounted = true; _mountApp(); } if (Au.isGuest()) _applyGuestMode(); window.Notara.Data.sync.full().catch(() => {}); } else { _appMounted = false; _resetAppState(); if (window.Notara.UpdateChecker) window.Notara.UpdateChecker.stopRealtime(); Au.renderAuthPage(); } }); }
+  async function init() { S.init(); await window.Notara.IDB.init(); await Au.init(loggedIn => { if (loggedIn || Au.isGuest()) { _resetAppState(); _appMounted = true; _mountApp(); if (Au.isGuest()) _applyGuestMode(); window.Notara.Data.sync.full().catch(() => {}); } else { _appMounted = false; _resetAppState(); if (window.Notara.UpdateChecker) window.Notara.UpdateChecker.stopRealtime(); Au.renderAuthPage(); } }); }
 
   function _applyGuestMode() {
     document.querySelectorAll('.nav-item[data-page="posts"], .nav-item[data-page="messages"]').forEach(el => {
