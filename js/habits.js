@@ -6,7 +6,13 @@ window.Notara.HabitTracker = (() => {
   const Auth = () => window.Notara.Auth;
   const UI   = window.Notara.UI;
 
-  function _today() { return new Date().toISOString().slice(0, 10); }
+  function _toLocalDate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  function _today() { return _toLocalDate(new Date()); }
   function _esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
   function _userId() { return Auth()?.getUser()?.id; }
   function _uuid() { return crypto.randomUUID(); }
@@ -125,7 +131,7 @@ window.Notara.HabitTracker = (() => {
     let check = new Date();
     for (const log of logs) {
       const logDate = log.date;
-      const checkStr = check.toISOString().slice(0, 10);
+      const checkStr = _toLocalDate(check);
       if (logDate === checkStr) { streak++; check.setDate(check.getDate() - 1); }
       else if (logDate < checkStr) break;
     }
@@ -137,7 +143,7 @@ window.Notara.HabitTracker = (() => {
     if (!uid) throw new Error('User tidak teridentifikasi');
     const since = new Date();
     since.setDate(since.getDate() - days);
-    const sinceStr = since.toISOString().slice(0, 10);
+    const sinceStr = _toLocalDate(since);
     const { data, error } = await db().from('habit_logs')
       .select('*')
       .eq('habit_id', habitId)
@@ -256,6 +262,7 @@ window.Notara.HabitTracker = (() => {
 
           const card = document.querySelector('.habit-progress-card');
           if (card) {
+            const dateLabel = new Date(_currentDate+'T00:00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
             card.innerHTML = `
               <div style="font-size:0.75rem;font-weight:700;color:var(--text-2);margin-bottom:4px">${dateLabel}</div>
               <div class="habit-progress-header"><span class="habit-progress-label">Progress Harian</span><span class="habit-progress-pct">${done}/${total} (${pct}%)</span></div>
@@ -318,8 +325,8 @@ window.Notara.HabitTracker = (() => {
     const sunday = new Date(monday);
     sunday.setDate(monday.getDate() + 6);
 
-    const startDate = monday.toISOString().slice(0, 10);
-    const endDate = sunday.toISOString().slice(0, 10);
+    const startDate = _toLocalDate(monday);
+    const endDate = _toLocalDate(sunday);
 
     const dayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
     const todayStr = _today();
@@ -340,7 +347,7 @@ window.Notara.HabitTracker = (() => {
     const todayDow = todayMonday.getDay();
     const todayMondayOffset = todayDow === 0 ? -6 : 1 - todayDow;
     todayMonday.setDate(todayMonday.getDate() + todayMondayOffset);
-    const isCurrentWeek = monday.toISOString().slice(0, 10) === todayMonday.toISOString().slice(0, 10);
+    const isCurrentWeek = _toLocalDate(monday) === _toLocalDate(todayMonday);
 
     const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
     const weekTitle = isCurrentWeek ? 'Minggu Ini' : `${monday.getDate()} - ${sunday.getDate()} ${monthNames[sunday.getMonth()]} ${sunday.getFullYear()}`;
@@ -350,7 +357,7 @@ window.Notara.HabitTracker = (() => {
     for (let i = 0; i < 7; i++) {
       const day = new Date(monday);
       day.setDate(monday.getDate() + i);
-      const iso = day.toISOString().slice(0, 10);
+      const iso = _toLocalDate(day);
       const isToday = iso === todayStr;
 
       const row = completionMap[iso];
@@ -377,7 +384,7 @@ window.Notara.HabitTracker = (() => {
 
     const since = new Date();
     since.setDate(since.getDate() - 6);
-    const sinceStr = since.toISOString().slice(0, 10);
+    const sinceStr = _toLocalDate(since);
     const { data: logs } = await db().from('habit_logs')
       .select('date, completed')
       .eq('habit_id', habitId)
@@ -389,7 +396,7 @@ window.Notara.HabitTracker = (() => {
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const iso = d.toISOString().slice(0, 10);
+      const iso = _toLocalDate(d);
       const found = (logs || []).find(l => l.date === iso && l.completed);
       last7.push({ date: iso, done: !!found });
     }

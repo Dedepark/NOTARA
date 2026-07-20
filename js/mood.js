@@ -23,7 +23,13 @@ window.Notara.MoodTracker = (() => {
     { value: 'Lainnya', icon: 'ph-dots-three', color: '#6b7280' },
   ];
 
-  function _today() { return new Date().toISOString().slice(0, 10); }
+  function _toLocalDate(d) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+  function _today() { return _toLocalDate(new Date()); }
   function _userId() { return Auth()?.getUser()?.id; }
   function _uuid() { return crypto.randomUUID(); }
   function _now()  { return new Date().toISOString(); }
@@ -65,7 +71,7 @@ window.Notara.MoodTracker = (() => {
     if (!uid) throw new Error('User tidak teridentifikasi');
     const since = new Date();
     since.setDate(since.getDate() - days);
-    const sinceStr = since.toISOString().slice(0, 10);
+    const sinceStr = _toLocalDate(since);
     const { data, error } = await db().from('mood_entries')
       .select('*')
       .eq('user_id', uid)
@@ -229,7 +235,7 @@ window.Notara.MoodTracker = (() => {
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);
-      const iso = d.toISOString().slice(0, 10);
+      const iso = _toLocalDate(d);
       const entry = history.find(h => h.date === iso);
       const label = d.toLocaleDateString('id-ID', { weekday: 'short' });
       days.push({ iso, label, entry });

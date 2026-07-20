@@ -11,7 +11,7 @@ window.Notara.Activity = (() => {
     if (words <= 0) return;
     const uid = _userId();
     if (!uid) return;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; })();
     const { error } = await db()
       .from('user_activity')
       .upsert({
