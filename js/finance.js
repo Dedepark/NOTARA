@@ -126,7 +126,7 @@ window.Notara.FinanceTracker = (() => {
     const summary = await getMonthlySummary(_currentYear, _currentMonth);
 
     let html = '<div class="tracker-page page-enter">';
-    html += `<div class="tracker-header"><h2><i class="ph ph-wallet"></i> Keuangan</h2><div style="display:flex;align-items:center;gap:6px"><button class="icon-btn" id="finance-prev" style="width:28px;height:28px"><i class="ph ph-caret-left"></i></button><span style="font-size:0.85rem;font-weight:800;color:var(--text-1);min-width:140px;text-align:center">${_monthLabel(_currentYear, _currentMonth)}</span><button class="icon-btn" id="finance-next" style="width:28px;height:28px"><i class="ph ph-caret-right"></i></button></div></div>`;
+    html += `<div class="tracker-header"><h2><i class="ph ph-wallet"></i> Keuangan</h2><div style="display:flex;align-items:center;gap:6px"><button class="icon-btn" id="finance-prev" style="width:28px;height:28px"><i class="ph ph-caret-left"></i></button><span style="font-size:0.85rem;font-weight:800;color:var(--text-1);min-width:140px;text-align:center">${_monthLabel(_currentYear, _currentMonth)}</span><button class="icon-btn" id="finance-next" style="width:28px;height:28px"><i class="ph ph-caret-right"></i></button><button class="btn-primary" id="finance-add-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem"><i class="ph ph-plus"></i> Transaksi Baru</button></div></div>`;
 
     html += `<div class="finance-balance-card">`;
     html += `<div class="finance-balance-label">Saldo Bulan Ini</div>`;
@@ -144,10 +144,6 @@ window.Notara.FinanceTracker = (() => {
     html += `</div>`;
 
     html += `<div id="finance-trend-wrap"></div>`;
-
-    html += `<div class="finance-actions">`;
-    html += `<button class="btn-primary" id="finance-add-btn"><i class="ph ph-plus"></i> Transaksi Baru</button>`;
-    html += `</div>`;
 
     if (summary.transactions.length) {
       const cats = Object.entries(summary.categoryBreakdown).sort((a, b) => b[1] - a[1]);
