@@ -65,6 +65,17 @@ window.Notara.HabitTracker = (() => {
     return data || [];
   }
 
+  async function getLogsByDate(date) {
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    const { data, error } = await db().from('habit_logs')
+      .select('*')
+      .eq('user_id', uid)
+      .eq('date', date);
+    if (error) throw error;
+    return data || [];
+  }
+
   async function toggleLog(habitId, date) {
     const uid = _userId();
     if (!uid) throw new Error('User tidak teridentifikasi');
@@ -137,6 +148,8 @@ window.Notara.HabitTracker = (() => {
     return days > 0 ? Math.round((completed / days) * 100) : 0;
   }
 
+  let _currentDate = _today();
+
   const DEFAULTS = [
     'Minum Air 2L', 'Olahraga 30 Menit', 'Membaca 15 Menit',
     'Sarapan Sehat', 'Tidur Tepat Waktu', 'Meditasi 5 Menit',
@@ -157,19 +170,25 @@ window.Notara.HabitTracker = (() => {
     main.innerHTML = `<div class="page-loading"><div class="loader-ring"></div></div>`;
 
     await _seedDefaults();
-    const [habits, logs] = await Promise.all([getAll(), getTodayLogs()]);
+    const [habits, logs] = await Promise.all([getAll(), getLogsByDate(_currentDate)]);
     const completedIds = new Set(logs.filter(l => l.completed).map(l => l.habit_id));
     const total = habits.length;
     const done  = habits.filter(h => completedIds.has(h.id)).length;
     const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
 
+    const dateLabel = new Date(_currentDate + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    const isToday = _currentDate === _today();
+
     let html = '<div class="tracker-page page-enter">';
-    html += `<div class="tracker-header"><h2><i class="ph ph-check-circle"></i> Kebiasaan Hari Ini</h2><div style="display:flex;gap:6px"><button class="btn-primary" id="habit-add-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem"><i class="ph ph-plus"></i> Tambah</button><button class="btn-ghost" id="habit-manage-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem"><i class="ph ph-list"></i> Kelola</button></div></div>`;
+    html += `<div class="tracker-header"><h2><i class="ph ph-check-circle"></i> Kebiasaan</h2><div style="display:flex;align-items:center;gap:6px"><button class="icon-btn" id="habit-prev-btn" style="width:28px;height:28px"><i class="ph ph-caret-left"></i></button><span id="habit-date-label" style="font-size:0.85rem;font-weight:800;color:var(--text-1);min-width:180px;text-align:center">${dateLabel}</span><button class="icon-btn" id="habit-next-btn" style="width:28px;height:28px"><i class="ph ph-caret-right"></i></button><button class="btn-ghost" id="habit-today-btn" style="font-size:0.7rem;padding:0.3rem 0.6rem;display:${isToday ? 'none' : 'inline-block'}">Hari Ini</button><button class="btn-primary" id="habit-add-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem"><i class="ph ph-plus"></i> Tambah</button><button class="btn-ghost" id="habit-manage-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem"><i class="ph ph-list"></i> Kelola</button></div></div>`;
 
     html += `<div class="habit-progress-card">`;
     html += `<div class="habit-progress-header"><span class="habit-progress-label">Progress Harian</span><span class="habit-progress-pct">${done}/${total} (${pct}%)</span></div>`;
     html += `<div class="habit-progress-bar"><div class="habit-progress-fill" style="width:${pct}%"></div></div>`;
     html += `</div>`;
+
+    html += `<div id="habit-week-calendar-wrap"></div>`;
+    html += `<div id="habit-stats-wrap"></div>`;
 
     html += `<div class="habit-checklist" id="habit-checklist">`;
     if (!habits.length) {
@@ -193,21 +212,44 @@ window.Notara.HabitTracker = (() => {
       if (el) el.textContent = `🔥 ${streak} · ${rate}%`;
     });
 
+    const weekCalWrap = document.getElementById('habit-week-calendar-wrap');
+    if (weekCalWrap) weekCalWrap.innerHTML = await _renderWeeklyCalendar(habits);
+
+    const statsWrap = document.getElementById('habit-stats-wrap');
+    if (statsWrap) statsWrap.innerHTML = await _renderMonthlyStats(habits);
+
+    document.querySelectorAll('.habit-week-day').forEach(el => {
+      el.addEventListener('click', () => {
+        _currentDate = el.dataset.date;
+        renderPage();
+      });
+    });
+
+    document.querySelectorAll('.habit-item-name').forEach(el => {
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const item = el.closest('.habit-item');
+        if (item) _showHabitDetail(item.dataset.id, el.textContent);
+      });
+    });
+
     _bindChecklistEvents(habits);
     _bindManageEvents();
+    _bindDateNav();
   }
 
   function _bindChecklistEvents(habits) {
     document.querySelectorAll('.habit-item').forEach(item => {
-      item.addEventListener('click', async () => {
+      item.addEventListener('click', async (e) => {
+        if (e.target.closest('.habit-item-name')) return;
         const id = item.dataset.id;
         const checkbox = item.querySelector('.habit-checkbox');
         checkbox.classList.toggle('checked');
         item.classList.toggle('completed');
 
         try {
-          await toggleLog(id);
-          const freshLogs = await getTodayLogs();
+          await toggleLog(id, _currentDate);
+          const freshLogs = await getLogsByDate(_currentDate);
           const done  = freshLogs.filter(l => l.completed).length;
           const total = habits.length;
           const pct   = total > 0 ? Math.round((done / total) * 100) : 0;
@@ -235,6 +277,152 @@ window.Notara.HabitTracker = (() => {
   function _bindManageEvents() {
     document.getElementById('habit-add-btn')?.addEventListener('click', () => _showManagePanel(null));
     document.getElementById('habit-manage-btn')?.addEventListener('click', _showManageList);
+  }
+
+  function _bindDateNav() {
+    document.getElementById('habit-prev-btn')?.addEventListener('click', () => {
+      const d = new Date(_currentDate + 'T00:00:00');
+      d.setDate(d.getDate() - 1);
+      _currentDate = d.toISOString().slice(0, 10);
+      renderPage();
+    });
+    document.getElementById('habit-next-btn')?.addEventListener('click', () => {
+      const d = new Date(_currentDate + 'T00:00:00');
+      d.setDate(d.getDate() + 1);
+      _currentDate = d.toISOString().slice(0, 10);
+      renderPage();
+    });
+    document.getElementById('habit-today-btn')?.addEventListener('click', () => {
+      _currentDate = _today();
+      renderPage();
+    });
+  }
+
+  async function _renderWeeklyCalendar(habits) {
+    const d = new Date(_currentDate + 'T00:00:00');
+    const dayOfWeek = d.getDay();
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    const monday = new Date(d);
+    monday.setDate(d.getDate() + mondayOffset);
+
+    const dayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+    const todayStr = _today();
+
+    let html = '<div class="habit-week-calendar">';
+    html += '<div class="habit-week-title"><i class="ph ph-calendar-blank"></i> Minggu Ini</div>';
+    html += '<div class="habit-week-grid">';
+
+    for (let i = 0; i < 7; i++) {
+      const day = new Date(monday);
+      day.setDate(monday.getDate() + i);
+      const iso = day.toISOString().slice(0, 10);
+      const isToday = iso === todayStr;
+
+      const dayLogs = await getLogsByDate(iso);
+      const completedCount = dayLogs.filter(l => l.completed).length;
+      const pct = habits.length > 0 ? Math.round((completedCount / habits.length) * 100) : 0;
+      const pctAttr = pct === 100 ? '100' : pct > 0 ? 'partial' : '0';
+
+      html += `<div class="habit-week-day" data-date="${iso}" ${isToday ? 'data-today="true"' : ''}>`;
+      html += `<span class="habit-week-day-num">${day.getDate()}</span>`;
+      html += `<div class="habit-week-day-dot" data-pct="${pctAttr}"></div>`;
+      html += `<span style="font-size:0.5rem;color:var(--text-3);font-weight:600">${dayNames[i]}</span>`;
+      html += '</div>';
+    }
+
+    html += '</div></div>';
+    return html;
+  }
+
+  async function _showHabitDetail(habitId, habitName) {
+    const [streak, rate7, rate30] = await Promise.all([
+      getStreak(habitId),
+      getCompletionRate(habitId, 7),
+      getCompletionRate(habitId, 30),
+    ]);
+
+    const since = new Date();
+    since.setDate(since.getDate() - 6);
+    const sinceStr = since.toISOString().slice(0, 10);
+    const { data: logs } = await db().from('habit_logs')
+      .select('date, completed')
+      .eq('habit_id', habitId)
+      .eq('user_id', _userId())
+      .gte('date', sinceStr)
+      .order('date', { ascending: true });
+
+    const last7 = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const iso = d.toISOString().slice(0, 10);
+      const found = (logs || []).find(l => l.date === iso && l.completed);
+      last7.push({ date: iso, done: !!found });
+    }
+
+    let miniBar = '<div style="display:flex;gap:3px;justify-content:center;margin:var(--space-md) 0">';
+    last7.forEach(d => {
+      const bg = d.done ? 'var(--label-easy)' : 'var(--text-3)';
+      const opacity = d.done ? '1' : '0.3';
+      miniBar += `<div style="width:24px;height:24px;border-radius:4px;background:${bg};opacity:${opacity};border:1px solid var(--border-strong)" title="${d.date}"></div>`;
+    });
+    miniBar += '</div>';
+
+    UI.modal({
+      title: `<i class="ph ph-check-circle"></i> ${_esc(habitName)}`,
+      body: `
+        <div style="text-align:center">
+          <div style="font-size:0.75rem;font-weight:700;color:var(--text-3);text-transform:uppercase;margin-bottom:var(--space-sm)">Streak Saat Ini</div>
+          <div style="font-size:1.5rem;font-weight:800;color:var(--accent);margin-bottom:var(--space-lg)">🔥 ${streak} hari</div>
+          <div style="font-size:0.75rem;font-weight:700;color:var(--text-3);text-transform:uppercase;margin-bottom:var(--space-sm)">7 Hari Terakhir</div>
+          <div style="font-size:1.2rem;font-weight:800;color:var(--text-1);margin-bottom:var(--space-sm)">${rate7}%</div>
+          ${miniBar}
+          <div style="font-size:0.75rem;font-weight:700;color:var(--text-3);text-transform:uppercase;margin-bottom:var(--space-sm)">30 Hari Terakhir</div>
+          <div style="font-size:1.2rem;font-weight:800;color:var(--text-1)">${rate30}%</div>
+        </div>
+      `,
+      footer: `<button class="btn-ghost" id="habit-detail-close">Tutup</button>`,
+    });
+    setTimeout(() => {
+      document.getElementById('habit-detail-close')?.addEventListener('click', () => document.getElementById('modal-close')?.click());
+    }, 60);
+  }
+
+  async function _renderMonthlyStats(habits) {
+    const now = new Date(_currentDate + 'T00:00:00');
+    const year = now.getFullYear();
+    const month = now.getMonth();
+    const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const endMonth = month + 1 > 11 ? 0 : month + 1;
+    const endYear = month + 1 > 11 ? year + 1 : year;
+    const endDate = `${endYear}-${String(endMonth + 1).padStart(2, '0')}-01`;
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const uid = _userId();
+    const { data: logs } = await db().from('habit_logs')
+      .select('date, completed, habit_id')
+      .eq('user_id', uid)
+      .gte('date', startDate)
+      .lt('date', endDate);
+
+    const allLogs = logs || [];
+    const uniqueDates = new Set(allLogs.filter(l => l.completed).map(l => l.date));
+    const activeDays = uniqueDates.size;
+    const totalCompleted = allLogs.filter(l => l.completed).length;
+    const avgCompletion = habits.length > 0 ? Math.round((totalCompleted / habits.length / daysInMonth) * 100) : 0;
+
+    let longestStreak = 0;
+    for (const h of habits) {
+      const s = await getStreak(h.id);
+      if (s > longestStreak) longestStreak = s;
+    }
+
+    let html = '<div class="habit-stats-card">';
+    html += `<div class="habit-stat-item"><div class="habit-stat-value">${activeDays}</div><div class="habit-stat-label">Hari Aktif</div></div>`;
+    html += `<div class="habit-stat-item"><div class="habit-stat-value">${avgCompletion}%</div><div class="habit-stat-label">Rata-rata</div></div>`;
+    html += `<div class="habit-stat-item"><div class="habit-stat-value">🔥 ${longestStreak}</div><div class="habit-stat-label">Streak Terpanjang</div></div>`;
+    html += '</div>';
+    return html;
   }
 
   async function _showManageList() {
@@ -313,5 +501,5 @@ window.Notara.HabitTracker = (() => {
     }, 60);
   }
 
-  return { renderPage, getAll, create, update, remove, toggleLog };
+  return { renderPage, getAll, create, update, remove, toggleLog, getLogsByDate, getStreak, getCompletionRate };
 })();

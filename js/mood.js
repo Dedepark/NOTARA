@@ -28,6 +28,10 @@ window.Notara.MoodTracker = (() => {
   function _uuid() { return crypto.randomUUID(); }
   function _now()  { return new Date().toISOString(); }
 
+  let _calYear = new Date().getFullYear();
+  let _calMonth = new Date().getMonth();
+  let _selectedCalDate = null;
+
   function _moodIcon(moodValue, filled) {
     const m = MOODS.find(x => x.value === moodValue);
     if (!m) return '<i class="ph ph-question"></i>';
@@ -71,6 +75,23 @@ window.Notara.MoodTracker = (() => {
     return data || [];
   }
 
+  async function getMonthEntries(year, month) {
+    const uid = _userId();
+    if (!uid) throw new Error('User tidak teridentifikasi');
+    const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    const endMonth = month + 1 > 11 ? 0 : month + 1;
+    const endYear = month + 1 > 11 ? year + 1 : year;
+    const endDate = `${endYear}-${String(endMonth + 1).padStart(2, '0')}-01`;
+    const { data, error } = await db().from('mood_entries')
+      .select('*')
+      .eq('user_id', uid)
+      .gte('date', startDate)
+      .lt('date', endDate)
+      .order('date', { ascending: true });
+    if (error) throw error;
+    return data || [];
+  }
+
   async function save(moodValue, triggers, note) {
     const uid = _userId();
     if (!uid) throw new Error('User tidak teridentifikasi');
@@ -109,17 +130,27 @@ window.Notara.MoodTracker = (() => {
     main.innerHTML = `<div class="page-loading"><div class="loader-ring"></div></div>`;
 
     const todayMood = await getToday();
-    const history   = await getHistory();
 
     let html = '<div class="tracker-page page-enter">';
     html += `<div class="tracker-header"><h2><i class="ph ph-smiley"></i> Mood Tracker</h2></div>`;
     if (todayMood) { html += _renderSummary(todayMood); } else { html += _renderForm(); }
-    html += _renderHistory(history);
+    html += `<div id="mood-weekly-chart-wrap"></div>`;
+    html += `<div id="mood-calendar-wrap"></div>`;
+    html += `<div id="mood-detail-wrap"></div>`;
     html += '</div>';
     main.innerHTML = html;
 
     if (!todayMood) _bindFormEvents();
     _bindChangeBtn();
+
+    const chartWrap = document.getElementById('mood-weekly-chart-wrap');
+    if (chartWrap) chartWrap.innerHTML = _renderWeeklyChart();
+    _drawMoodChart();
+
+    const calWrap = document.getElementById('mood-calendar-wrap');
+    if (calWrap) calWrap.innerHTML = await _renderCalendar();
+
+    _bindCalendarEvents();
   }
 
   function _renderForm() {
@@ -172,33 +203,201 @@ window.Notara.MoodTracker = (() => {
     return html;
   }
 
-  function _renderHistory(history) {
+  function _renderWeeklyChart() {
+    return `<div class="mood-chart-wrap"><div class="mood-chart-title"><i class="ph ph-chart-bar"></i> Grafik 7 Hari</div><canvas id="mood-weekly-chart" style="width:100%;height:150px"></canvas></div>`;
+  }
+
+  async function _drawMoodChart() {
+    const canvas = document.getElementById('mood-weekly-chart');
+    if (!canvas) return;
+    const history = await getHistory(7);
+    const dpr = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    const ctx = canvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+    const w = rect.width;
+    const h = rect.height;
+
+    ctx.clearRect(0, 0, w, h);
+
+    const moodColorMap = { very_happy: '#4caf82', happy: '#3b82f6', neutral: '#eab308', sad: '#f97316', very_sad: '#ef4444' };
+    const moodValues = { very_happy: 5, happy: 4, neutral: 3, sad: 2, very_sad: 1 };
+
     const days = [];
     for (let i = 6; i >= 0; i--) {
-      const d    = new Date();
+      const d = new Date();
       d.setDate(d.getDate() - i);
-      const iso  = d.toISOString().slice(0, 10);
+      const iso = d.toISOString().slice(0, 10);
       const entry = history.find(h => h.date === iso);
       const label = d.toLocaleDateString('id-ID', { weekday: 'short' });
       days.push({ iso, label, entry });
     }
 
-    let html = `<div class="mood-history">`;
-    html += `<div class="mood-history-title"><i class="ph ph-clock-counter-clockwise"></i> 7 Hari Terakhir</div>`;
-    html += `<div class="mood-week-row">`;
-    days.forEach(d => {
-      html += `<div class="mood-day">`;
-      html += `<div class="mood-day-label">${d.label}</div>`;
-      if (d.entry) {
-        const hColor = (MOODS.find(x => x.value === d.entry.mood) || {}).color || '';
-        html += `<div class="mood-day-icon filled" data-color="${hColor}">${_moodIcon(d.entry.mood, true)}</div>`;
+    const padding = { top: 10, bottom: 30, left: 10, right: 10 };
+    const chartW = w - padding.left - padding.right;
+    const chartH = h - padding.top - padding.bottom;
+    const barW = chartW / 7 * 0.6;
+    const gap = chartW / 7;
+
+    const getCSVar = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const text3 = getCSVar('--text-3') || '#666';
+
+    ctx.font = '600 10px var(--font-body, sans-serif)';
+    ctx.textAlign = 'center';
+
+    days.forEach((day, i) => {
+      const x = padding.left + i * gap + gap / 2;
+      const val = day.entry ? moodValues[day.entry.mood] || 3 : 0;
+      const maxVal = 5;
+      const barH = val > 0 ? (val / maxVal) * chartH : 0;
+      const y = padding.top + chartH - barH;
+
+      if (val > 0) {
+        const color = moodColorMap[day.entry.mood] || text3;
+        ctx.fillStyle = color;
+        ctx.beginPath();
+        const r = 3;
+        ctx.moveTo(x - barW / 2 + r, y);
+        ctx.arcTo(x + barW / 2, y, x + barW / 2, y + barH, r);
+        ctx.arcTo(x + barW / 2, y + barH, x - barW / 2, y + barH, r);
+        ctx.arcTo(x - barW / 2, y + barH, x - barW / 2, y, r);
+        ctx.arcTo(x - barW / 2, y, x + barW / 2, y, r);
+        ctx.fill();
       } else {
-        html += `<div class="mood-day-empty"></div>`;
+        ctx.fillStyle = text3;
+        ctx.globalAlpha = 0.3;
+        ctx.fillRect(x - barW / 2, padding.top + chartH - 4, barW, 4);
+        ctx.globalAlpha = 1;
       }
-      html += `</div>`;
+
+      ctx.fillStyle = text3;
+      ctx.fillText(day.label, x, h - 8);
     });
-    html += `</div></div>`;
+  }
+
+  async function _renderCalendar() {
+    const entries = await getMonthEntries(_calYear, _calMonth);
+    const entryMap = {};
+    entries.forEach(e => { entryMap[e.date] = e; });
+
+    const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    const dayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
+    const todayStr = _today();
+
+    const firstDay = new Date(_calYear, _calMonth, 1);
+    const lastDay = new Date(_calYear, _calMonth + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    let startOffset = firstDay.getDay() - 1;
+    if (startOffset < 0) startOffset = 6;
+
+    let html = '<div class="mood-calendar">';
+    html += `<div class="habit-week-title"><i class="ph ph-calendar-blank"></i> ${monthNames[_calMonth]} ${_calYear}</div>`;
+    html += '<div class="mood-calendar-nav" style="display:flex;justify-content:space-between;margin-bottom:var(--space-md)">';
+    html += '<button class="icon-btn" id="mood-cal-prev" style="width:28px;height:28px"><i class="ph ph-caret-left"></i></button>';
+    html += `<span style="font-size:0.85rem;font-weight:800;color:var(--text-1)">${monthNames[_calMonth]} ${_calYear}</span>`;
+    html += '<button class="icon-btn" id="mood-cal-next" style="width:28px;height:28px"><i class="ph ph-caret-right"></i></button>';
+    html += '</div>';
+
+    html += '<div class="mood-calendar-grid">';
+    dayNames.forEach(d => {
+      html += `<div class="mood-calendar-header">${d}</div>`;
+    });
+
+    for (let i = 0; i < startOffset; i++) {
+      html += '<div class="mood-calendar-day empty"></div>';
+    }
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${_calYear}-${String(_calMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const entry = entryMap[dateStr];
+      const isToday = dateStr === todayStr;
+      const isSelected = dateStr === _selectedCalDate;
+
+      html += `<div class="mood-calendar-day" data-date="${dateStr}" ${isToday ? 'data-today="true"' : ''} ${isSelected ? 'data-selected="true"' : ''}>`;
+      html += `<span class="mood-calendar-day-num">${day}</span>`;
+      if (entry) {
+        const mc = (MOODS.find(x => x.value === entry.mood) || {}).color || '';
+        html += `<div class="mood-calendar-day-icon" data-color="${mc}">${_moodIcon(entry.mood, true)}</div>`;
+      }
+      html += '</div>';
+    }
+
+    html += '</div></div>';
     return html;
+  }
+
+  async function _renderDayDetail(dateStr) {
+    const uid = _userId();
+    const { data: entries } = await db().from('mood_entries')
+      .select('*')
+      .eq('user_id', uid)
+      .eq('date', dateStr);
+
+    const entry = entries && entries.length > 0 ? entries[0] : null;
+    const d = new Date(dateStr + 'T00:00:00');
+    const dateLabel = d.toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+    let html = '<div class="mood-detail-area">';
+    html += `<div style="font-size:0.8rem;font-weight:700;color:var(--text-3);margin-bottom:var(--space-md)">${dateLabel}</div>`;
+
+    if (entry) {
+      const mc = (MOODS.find(x => x.value === entry.mood) || {}).color || '';
+      html += `<div class="mood-detail-icon" data-color="${mc}">${_moodIcon(entry.mood, true)}</div>`;
+      html += `<div class="mood-detail-label">${_moodLabel(entry.mood)}</div>`;
+
+      if (entry.triggers && entry.triggers.length > 0) {
+        html += '<div class="mood-detail-triggers">';
+        entry.triggers.forEach(t => {
+          html += `<span class="mood-detail-trigger">${_esc(t)}</span>`;
+        });
+        html += '</div>';
+      }
+
+      if (entry.note) {
+        html += `<div class="mood-detail-note">"${_esc(entry.note)}"</div>`;
+      }
+    } else {
+      html += '<div style="font-size:0.85rem;color:var(--text-3)">Tidak ada mood tercatat di hari ini</div>';
+    }
+
+    html += '</div>';
+    return html;
+  }
+
+  function _bindCalendarEvents() {
+    document.getElementById('mood-cal-prev')?.addEventListener('click', async () => {
+      _calMonth--;
+      if (_calMonth < 0) { _calMonth = 11; _calYear--; }
+      _selectedCalDate = null;
+      const calWrap = document.getElementById('mood-calendar-wrap');
+      if (calWrap) calWrap.innerHTML = await _renderCalendar();
+      _bindCalendarEvents();
+      const detailWrap = document.getElementById('mood-detail-wrap');
+      if (detailWrap) detailWrap.innerHTML = '';
+    });
+
+    document.getElementById('mood-cal-next')?.addEventListener('click', async () => {
+      _calMonth++;
+      if (_calMonth > 11) { _calMonth = 0; _calYear++; }
+      _selectedCalDate = null;
+      const calWrap = document.getElementById('mood-calendar-wrap');
+      if (calWrap) calWrap.innerHTML = await _renderCalendar();
+      _bindCalendarEvents();
+      const detailWrap = document.getElementById('mood-detail-wrap');
+      if (detailWrap) detailWrap.innerHTML = '';
+    });
+
+    document.querySelectorAll('.mood-calendar-day[data-date]').forEach(el => {
+      el.addEventListener('click', async () => {
+        _selectedCalDate = el.dataset.date;
+        document.querySelectorAll('.mood-calendar-day').forEach(d => d.removeAttribute('data-selected'));
+        el.setAttribute('data-selected', 'true');
+        const detailWrap = document.getElementById('mood-detail-wrap');
+        if (detailWrap) detailWrap.innerHTML = await _renderDayDetail(el.dataset.date);
+      });
+    });
   }
 
   function _bindFormEvents() {
@@ -290,5 +489,5 @@ window.Notara.MoodTracker = (() => {
     if (btn) btn.disabled = !document.querySelector('.mood-btn.active');
   }
 
-  return { renderPage, getToday, getHistory, save };
+  return { renderPage, getToday, getHistory, save, getMonthEntries };
 })();

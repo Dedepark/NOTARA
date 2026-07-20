@@ -82,6 +82,33 @@
 .mood-day-icon.filled[data-color] i { color: var(--mood-clr); }
 .mood-day-empty { width: 1.2rem; height: 1.2rem; border: 2px dashed var(--text-3); border-radius: 50%; opacity: 0.6; }
 
+/* ── MOOD CALENDAR ── */
+.mood-calendar { background: var(--surface); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-md); padding: var(--space-lg); margin-bottom: var(--space-lg); }
+.mood-calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.mood-calendar-header { font-size: 0.6rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; text-align: center; padding: 4px 0; }
+.mood-calendar-day { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 2px; border-radius: var(--radius-sm); background: var(--bg); border: var(--border-w) solid var(--border-strong); cursor: pointer; transition: all var(--dur-fast); min-height: 44px; }
+.mood-calendar-day:hover { transform: translate(-1px, -1px); box-shadow: var(--shadow-sm); }
+.mood-calendar-day.empty { background: transparent; border-color: transparent; cursor: default; }
+.mood-calendar-day.empty:hover { transform: none; box-shadow: none; }
+.mood-calendar-day[data-today] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.mood-calendar-day[data-selected] { border-color: var(--accent); background: var(--accent-light); box-shadow: 0 0 0 1px var(--accent); }
+.mood-calendar-day-num { font-size: 0.7rem; font-weight: 700; color: var(--text-2); }
+.mood-calendar-day-icon { font-size: 0.9rem; }
+.mood-calendar-day-icon[data-color] i { color: var(--mood-clr); }
+
+/* ── MOOD DETAIL AREA ── */
+.mood-detail-area { background: var(--surface); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-md); padding: var(--space-lg); margin-bottom: var(--space-lg); text-align: center; }
+.mood-detail-icon { font-size: 3rem; margin-bottom: var(--space-md); }
+.mood-detail-icon[data-color] i { color: var(--mood-clr); }
+.mood-detail-label { font-size: 1rem; font-weight: 800; color: var(--text-1); }
+.mood-detail-triggers { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: var(--space-md) 0; }
+.mood-detail-trigger { font-size: 0.7rem; font-weight: 700; padding: 3px 10px; background: var(--accent-light); color: var(--accent); border-radius: var(--radius-md); }
+.mood-detail-note { font-size: 0.85rem; color: var(--text-2); font-style: italic; }
+
+/* ── MOOD CHART ── */
+.mood-chart-wrap { background: var(--surface); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-md); padding: var(--space-lg); margin-bottom: var(--space-lg); }
+.mood-chart-title { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; margin-bottom: var(--space-md); display: flex; align-items: center; gap: 6px; color: var(--text-1); }
+
 /* ── HABIT TRACKER ── */
 .habit-checklist { display: flex; flex-direction: column; gap: 6px; margin-bottom: var(--space-lg); }
 .habit-item { display: flex; align-items: center; gap: var(--space-sm); padding: var(--space-sm) var(--space-md); background: var(--surface); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); cursor: pointer; transition: all var(--dur-fast) var(--ease-smooth); }
@@ -102,6 +129,25 @@
 .habit-progress-pct { font-size: 1.2rem; font-weight: 800; color: var(--accent); }
 .habit-progress-bar { height: 8px; background: var(--bg); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-sm); overflow: hidden; }
 .habit-progress-fill { height: 100%; background: var(--accent); border-radius: var(--radius-sm); transition: width var(--dur-base) var(--ease-smooth); }
+
+/* ── HABIT WEEKLY CALENDAR ── */
+.habit-week-calendar { background: var(--surface); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-md); padding: var(--space-lg); margin-bottom: var(--space-lg); }
+.habit-week-title { font-size: 0.75rem; font-weight: 800; text-transform: uppercase; margin-bottom: var(--space-md); display: flex; align-items: center; gap: 6px; color: var(--text-1); }
+.habit-week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.habit-week-day { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 2px; border-radius: var(--radius-sm); background: var(--bg); border: var(--border-w) solid var(--border-strong); cursor: pointer; transition: all var(--dur-fast); }
+.habit-week-day:hover { transform: translate(-1px, -1px); box-shadow: var(--shadow-sm); }
+.habit-week-day[data-today] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.habit-week-day-num { font-size: 0.7rem; font-weight: 700; color: var(--text-2); }
+.habit-week-day-dot { width: 8px; height: 8px; border-radius: 50%; }
+.habit-week-day-dot[data-pct="100"] { background: var(--label-easy); }
+.habit-week-day-dot[data-pct="partial"] { background: var(--accent); }
+.habit-week-day-dot[data-pct="0"] { background: var(--text-3); opacity: 0.4; }
+
+/* ── HABIT MONTHLY STATS ── */
+.habit-stats-card { background: var(--surface); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-md); padding: var(--space-lg); margin-bottom: var(--space-lg); display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-md); }
+.habit-stat-item { text-align: center; }
+.habit-stat-value { font-size: 1.2rem; font-weight: 800; color: var(--accent); }
+.habit-stat-label { font-size: 0.65rem; font-weight: 700; color: var(--text-3); text-transform: uppercase; }
 
 /* ── FINANCE TRACKER ── */
 .finance-balance-card { background: var(--surface); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: var(--space-xl); text-align: center; margin-bottom: var(--space-lg); }
@@ -134,6 +180,17 @@
 .finance-tx-amount.expense { color: var(--label-hard); }
 .finance-tx-delete { color: var(--label-hard); font-size: 0.9rem; cursor: pointer; padding: 6px; border-radius: var(--radius-sm); }
 .finance-tx-delete:hover { color: #fff; background: var(--label-hard); }
+
+.finance-tx-edit { color: var(--text-3); font-size: 0.9rem; cursor: pointer; padding: 6px; border-radius: var(--radius-sm); }
+.finance-tx-edit:hover { color: var(--accent); background: var(--accent-light); }
+
+.finance-filter-bar { display: flex; gap: var(--space-sm); margin-bottom: var(--space-md); flex-wrap: wrap; }
+.finance-filter-bar select, .finance-filter-bar input { flex: 1; min-width: 120px; padding: 0.5rem 8px; font-size: 0.8rem; font-weight: 700; background: var(--bg); color: var(--text-1); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-md); }
+
+.finance-summary-row { display: flex; justify-content: space-around; padding: var(--space-sm) 0; margin-bottom: var(--space-md); font-size: 0.75rem; }
+.finance-summary-item { text-align: center; }
+.finance-summary-item strong { color: var(--accent); font-weight: 800; }
+.finance-summary-item span { color: var(--text-3); font-weight: 700; }
 
 .finance-category-breakdown { margin-top: var(--space-lg); }
 .finance-cat-row { display: flex; align-items: center; gap: var(--space-sm); padding: 6px 0; }
