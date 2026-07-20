@@ -42,6 +42,53 @@ window.Notara.FinanceTracker = (() => {
     'Investasi': '#4d96ff', 'Hadiah': '#ffd93d',
   };
 
+  function _catDropdownHtml(type, selected) {
+    const cats = type === 'income' ? ['Gaji','Freelance','Investasi','Hadiah','Lainnya'] : ['Makanan','Transportasi','Belanja','Tagihan','Hiburan','Kesehatan','Pendidikan','Lainnya'];
+    return `<div class="dropdown-wrap" data-dropdown="finance-category-add"><button class="dropdown-trigger" data-dropdown-toggle="finance-category-add" type="button"><span class="dropdown-value">${selected || cats[0]}</span><i class="fa-solid fa-chevron-down dropdown-arrow"></i></button><div class="dropdown-menu" id="dropdown-finance-category-add">${cats.map(c => `<div class="dropdown-item${c === selected ? ' active' : ''}" data-cat-pick="${c}">${c}</div>`).join('')}</div></div>`;
+  }
+
+  function _catDropdownHtmlEdit(type, selected) {
+    const cats = type === 'income' ? ['Gaji','Freelance','Investasi','Hadiah','Lainnya'] : ['Makanan','Transportasi','Belanja','Tagihan','Hiburan','Kesehatan','Pendidikan','Lainnya'];
+    return `<div class="dropdown-wrap" data-dropdown="finance-category-edit"><button class="dropdown-trigger" data-dropdown-toggle="finance-category-edit" type="button"><span class="dropdown-value">${selected || cats[0]}</span><i class="fa-solid fa-chevron-down dropdown-arrow"></i></button><div class="dropdown-menu" id="dropdown-finance-category-edit">${cats.map(c => `<div class="dropdown-item${c === selected ? ' active' : ''}" data-cat-pick="${c}">${c}</div>`).join('')}</div></div>`;
+  }
+
+  function _bindDropdownEvents(container) {
+    const wrap = container.querySelector('.dropdown-wrap');
+    if (!wrap) return;
+    const trigger = wrap.querySelector('.dropdown-trigger');
+    const menu = wrap.querySelector('.dropdown-menu');
+    if (!trigger || !menu) return;
+
+    trigger.addEventListener('click', e => {
+      e.stopPropagation();
+      const isOpen = wrap.classList.contains('open');
+      document.querySelectorAll('.dropdown-wrap.open').forEach(w => w.classList.remove('open'));
+      if (!isOpen) wrap.classList.add('open');
+    });
+
+    menu.querySelectorAll('.dropdown-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const val = item.dataset.catPick;
+        wrap.querySelector('.dropdown-value').textContent = item.textContent;
+        menu.querySelectorAll('.dropdown-item').forEach(x => x.classList.remove('active'));
+        item.classList.add('active');
+        wrap.classList.remove('open');
+
+        const filterInput = document.getElementById('finance-search');
+        _applyFinanceFilters(val, filterInput?.value || '');
+      });
+    });
+  }
+
+  function _applyFinanceFilters(cat, q) {
+    const query = (q || '').toLowerCase();
+    document.querySelectorAll('.finance-tx').forEach(el => {
+      const matchCat = !cat || el.querySelector('.finance-tx-category')?.textContent === cat;
+      const matchQ = !query || el.querySelector('.finance-tx-category')?.textContent.toLowerCase().includes(query) || (el.querySelector('.finance-tx-desc')?.textContent || '').toLowerCase().includes(query);
+      el.style.display = (matchCat && matchQ) ? '' : 'none';
+    });
+  }
+
   async function addTransaction(data) {
     const uid = _userId();
     if (!uid) throw new Error('User tidak teridentifikasi');
@@ -175,7 +222,7 @@ window.Notara.FinanceTracker = (() => {
     if (summary.transactions.length) {
       const uniqueCats = [...new Set(summary.transactions.map(t => t.category))];
       html += `<div class="finance-filter-bar">`;
-      html += `<select id="finance-cat-filter"><option value="">Semua Kategori</option>${uniqueCats.map(c => `<option value="${c}">${c}</option>`).join('')}</select>`;
+      html += `<div class="dropdown-wrap" data-dropdown="finance-cat"><button class="dropdown-trigger" data-dropdown-toggle="finance-cat" type="button"><span class="dropdown-value">Semua Kategori</span><i class="fa-solid fa-chevron-down dropdown-arrow"></i></button><div class="dropdown-menu" id="dropdown-finance-cat"><div class="dropdown-item active" data-cat-pick="">Semua Kategori</div>${uniqueCats.map(c => `<div class="dropdown-item" data-cat-pick="${c}">${c}</div>`).join('')}</div></div>`;
       html += `<input type="text" id="finance-search" placeholder="Cari transaksi...">`;
       html += `</div>`;
     }
@@ -289,19 +336,14 @@ window.Notara.FinanceTracker = (() => {
       });
     });
 
-    const catFilter = document.getElementById('finance-cat-filter');
     const searchInput = document.getElementById('finance-search');
-    function applyFilters() {
-      const cat = catFilter?.value || '';
-      const q = (searchInput?.value || '').toLowerCase();
-      document.querySelectorAll('.finance-tx').forEach(el => {
-        const matchCat = !cat || el.querySelector('.finance-tx-category')?.textContent === cat;
-        const matchQ = !q || el.querySelector('.finance-tx-category')?.textContent.toLowerCase().includes(q) || (el.querySelector('.finance-tx-desc')?.textContent || '').toLowerCase().includes(q);
-        el.style.display = (matchCat && matchQ) ? '' : 'none';
-      });
-    }
-    catFilter?.addEventListener('change', applyFilters);
-    searchInput?.addEventListener('input', applyFilters);
+    const filterWrap = document.querySelector('[data-dropdown="finance-cat"]');
+    if (filterWrap) _bindDropdownEvents(filterWrap.parentElement);
+    searchInput?.addEventListener('input', () => {
+      const activeCat = document.querySelector('[data-dropdown="finance-cat"] .dropdown-value')?.textContent;
+      _applyFinanceFilters(activeCat === 'Semua Kategori' ? '' : activeCat || '', searchInput.value);
+    });
+    document.addEventListener('click', () => { document.querySelectorAll('.dropdown-wrap.open').forEach(w => w.classList.remove('open')); });
 
     const trendWrap = document.getElementById('finance-trend-wrap');
     if (trendWrap) {
@@ -397,13 +439,6 @@ window.Notara.FinanceTracker = (() => {
 
   function _showEditForm(tx) {
     let txType = tx.type;
-    const expenseCats = ['Makanan', 'Transportasi', 'Belanja', 'Tagihan', 'Hiburan', 'Kesehatan', 'Pendidikan', 'Lainnya'];
-    const incomeCats  = ['Gaji', 'Freelance', 'Investasi', 'Hadiah', 'Lainnya'];
-
-    function catOptions(type) {
-      const cats = type === 'income' ? incomeCats : expenseCats;
-      return cats.map(c => `<option value="${c}" ${c === tx.category ? 'selected' : ''}>${c}</option>`).join('');
-    }
 
     UI.modal({
       title: '<i class="ph ph-pen"></i> Edit Transaksi',
@@ -421,7 +456,7 @@ window.Notara.FinanceTracker = (() => {
         </div>
         <div class="finance-field">
           <label>Kategori</label>
-          <select id="finance-category">${catOptions(txType)}</select>
+          ${_catDropdownHtmlEdit(txType, tx.category)}
         </div>
         <div class="finance-field">
           <label>Keterangan (opsional)</label>
@@ -441,13 +476,20 @@ window.Notara.FinanceTracker = (() => {
         _updateAmountStyle();
       }
 
+      const editFieldWrap = document.querySelector('[data-dropdown="finance-category-edit"]')?.closest('.finance-field') || document.querySelector('[data-dropdown="finance-category-edit"]')?.parentElement;
+      if (editFieldWrap) _bindDropdownEvents(editFieldWrap);
+
       document.querySelectorAll('#finance-type-toggle .finance-type-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           document.querySelectorAll('#finance-type-toggle .finance-type-btn').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
           txType = btn.dataset.type;
-          const select = document.getElementById('finance-category');
-          if (select) select.innerHTML = catOptions(txType);
+          const wrap = document.querySelector('[data-dropdown="finance-category-edit"]');
+          if (wrap) {
+            const parent = wrap.closest('.finance-field') || wrap.parentElement;
+            parent.innerHTML = `<label>Kategori</label>${_catDropdownHtmlEdit(txType, null)}`;
+            _bindDropdownEvents(parent);
+          }
           _updateAmountStyle();
         });
       });
@@ -469,7 +511,7 @@ window.Notara.FinanceTracker = (() => {
 
       document.getElementById('finance-form-save')?.addEventListener('click', async () => {
         const amount      = parseFloat(document.getElementById('finance-amount')?.value);
-        const category    = document.getElementById('finance-category')?.value;
+        const category    = document.querySelector('[data-dropdown="finance-category-edit"] .dropdown-value')?.textContent?.trim();
         const description = document.getElementById('finance-desc')?.value?.trim() || '';
 
         if (!amount || amount <= 0) { document.getElementById('finance-error').textContent = 'Nominal wajib diisi.'; return; }
@@ -499,13 +541,6 @@ window.Notara.FinanceTracker = (() => {
 
   function _showAddForm() {
     let txType = 'expense';
-    const expenseCats = ['Makanan', 'Transportasi', 'Belanja', 'Tagihan', 'Hiburan', 'Kesehatan', 'Pendidikan', 'Lainnya'];
-    const incomeCats  = ['Gaji', 'Freelance', 'Investasi', 'Hadiah', 'Lainnya'];
-
-    function catOptions(type) {
-      const cats = type === 'income' ? incomeCats : expenseCats;
-      return cats.map(c => `<option value="${c}">${c}</option>`).join('');
-    }
 
     UI.modal({
       title: '<i class="ph ph-plus-circle"></i> Transaksi Baru',
@@ -523,7 +558,7 @@ window.Notara.FinanceTracker = (() => {
         </div>
         <div class="finance-field">
           <label>Kategori</label>
-          <select id="finance-category">${catOptions(txType)}</select>
+          ${_catDropdownHtml(txType, null)}
         </div>
         <div class="finance-field">
           <label>Keterangan (opsional)</label>
@@ -537,13 +572,22 @@ window.Notara.FinanceTracker = (() => {
     setTimeout(() => {
       document.getElementById('finance-form-cancel')?.addEventListener('click', () => document.getElementById('modal-close')?.click());
 
+      const addFormField = document.querySelector('.finance-field');
+      const addFormContainer = addFormField?.closest('.modal-body, .finance-field')?.parentElement || document.getElementById('app-main');
+      const addFieldWrap = document.querySelector('[data-dropdown="finance-category-add"]')?.closest('.finance-field') || document.querySelector('[data-dropdown="finance-category-add"]')?.parentElement;
+      if (addFieldWrap) _bindDropdownEvents(addFieldWrap);
+
       document.querySelectorAll('#finance-type-toggle .finance-type-btn').forEach(btn => {
         btn.addEventListener('click', () => {
           document.querySelectorAll('#finance-type-toggle .finance-type-btn').forEach(b => b.classList.remove('active'));
           btn.classList.add('active');
           txType = btn.dataset.type;
-          const select = document.getElementById('finance-category');
-          if (select) select.innerHTML = catOptions(txType);
+          const wrap = document.querySelector('[data-dropdown="finance-category-add"]');
+          if (wrap) {
+            const parent = wrap.closest('.finance-field') || wrap.parentElement;
+            parent.innerHTML = `<label>Kategori</label>${_catDropdownHtml(txType, null)}`;
+            _bindDropdownEvents(parent);
+          }
           _updateAmountStyle();
         });
       });
@@ -571,7 +615,7 @@ window.Notara.FinanceTracker = (() => {
 
       document.getElementById('finance-form-save')?.addEventListener('click', async () => {
         const amount      = parseFloat(document.getElementById('finance-amount')?.value);
-        const category    = document.getElementById('finance-category')?.value;
+        const category    = document.querySelector('[data-dropdown="finance-category-add"] .dropdown-value')?.textContent?.trim();
         const description = document.getElementById('finance-desc')?.value?.trim() || '';
 
         if (!amount || amount <= 0) { document.getElementById('finance-error').textContent = 'Nominal wajib diisi.'; return; }
