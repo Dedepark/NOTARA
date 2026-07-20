@@ -305,8 +305,25 @@ window.Notara.HabitTracker = (() => {
     const monday = new Date(d);
     monday.setDate(d.getDate() + mondayOffset);
 
+    const sunday = new Date(monday);
+    sunday.setDate(monday.getDate() + 6);
+
+    const startDate = monday.toISOString().slice(0, 10);
+    const endDate = sunday.toISOString().slice(0, 10);
+
     const dayNames = ['Sen', 'Sel', 'Rab', 'Kam', 'Jum', 'Sab', 'Min'];
     const todayStr = _today();
+
+    const { data: completionData } = await db().rpc('get_habit_completion_by_date_range', {
+      p_user_id: _userId(),
+      p_start_date: startDate,
+      p_end_date: endDate,
+    });
+
+    const completionMap = {};
+    (completionData || []).forEach(row => {
+      completionMap[row.log_date] = row;
+    });
 
     let html = '<div class="habit-week-calendar">';
     html += '<div class="habit-week-title"><i class="ph ph-calendar-blank"></i> Minggu Ini</div>';
@@ -318,9 +335,8 @@ window.Notara.HabitTracker = (() => {
       const iso = day.toISOString().slice(0, 10);
       const isToday = iso === todayStr;
 
-      const dayLogs = await getLogsByDate(iso);
-      const completedCount = dayLogs.filter(l => l.completed).length;
-      const pct = habits.length > 0 ? Math.round((completedCount / habits.length) * 100) : 0;
+      const row = completionMap[iso];
+      const pct = row ? Number(row.completion_pct) : 0;
       const pctAttr = pct === 100 ? '100' : pct > 0 ? 'partial' : '0';
 
       html += `<div class="habit-week-day" data-date="${iso}" ${isToday ? 'data-today="true"' : ''}>`;
@@ -391,36 +407,20 @@ window.Notara.HabitTracker = (() => {
   async function _renderMonthlyStats(habits) {
     const now = new Date(_currentDate + 'T00:00:00');
     const year = now.getFullYear();
-    const month = now.getMonth();
-    const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-    const endMonth = month + 1 > 11 ? 0 : month + 1;
-    const endYear = month + 1 > 11 ? year + 1 : year;
-    const endDate = `${endYear}-${String(endMonth + 1).padStart(2, '0')}-01`;
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const month = now.getMonth() + 1;
 
-    const uid = _userId();
-    const { data: logs } = await db().from('habit_logs')
-      .select('date, completed, habit_id')
-      .eq('user_id', uid)
-      .gte('date', startDate)
-      .lt('date', endDate);
+    const { data: stats } = await db().rpc('get_habit_monthly_stats', {
+      p_user_id: _userId(),
+      p_year: year,
+      p_month: month,
+    });
 
-    const allLogs = logs || [];
-    const uniqueDates = new Set(allLogs.filter(l => l.completed).map(l => l.date));
-    const activeDays = uniqueDates.size;
-    const totalCompleted = allLogs.filter(l => l.completed).length;
-    const avgCompletion = habits.length > 0 ? Math.round((totalCompleted / habits.length / daysInMonth) * 100) : 0;
-
-    let longestStreak = 0;
-    for (const h of habits) {
-      const s = await getStreak(h.id);
-      if (s > longestStreak) longestStreak = s;
-    }
+    const s = stats && stats.length > 0 ? stats[0] : { active_days: 0, avg_completion: 0, max_streak: 0 };
 
     let html = '<div class="habit-stats-card">';
-    html += `<div class="habit-stat-item"><div class="habit-stat-value">${activeDays}</div><div class="habit-stat-label">Hari Aktif</div></div>`;
-    html += `<div class="habit-stat-item"><div class="habit-stat-value">${avgCompletion}%</div><div class="habit-stat-label">Rata-rata</div></div>`;
-    html += `<div class="habit-stat-item"><div class="habit-stat-value">🔥 ${longestStreak}</div><div class="habit-stat-label">Streak Terpanjang</div></div>`;
+    html += `<div class="habit-stat-item"><div class="habit-stat-value">${s.active_days}</div><div class="habit-stat-label">Hari Aktif</div></div>`;
+    html += `<div class="habit-stat-item"><div class="habit-stat-value">${s.avg_completion}%</div><div class="habit-stat-label">Rata-rata</div></div>`;
+    html += `<div class="habit-stat-item"><div class="habit-stat-value">🔥 ${s.max_streak}</div><div class="habit-stat-label">Streak Terpanjang</div></div>`;
     html += '</div>';
     return html;
   }

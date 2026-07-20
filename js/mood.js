@@ -78,18 +78,18 @@ window.Notara.MoodTracker = (() => {
   async function getMonthEntries(year, month) {
     const uid = _userId();
     if (!uid) throw new Error('User tidak teridentifikasi');
-    const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`;
-    const endMonth = month + 1 > 11 ? 0 : month + 1;
-    const endYear = month + 1 > 11 ? year + 1 : year;
-    const endDate = `${endYear}-${String(endMonth + 1).padStart(2, '0')}-01`;
-    const { data, error } = await db().from('mood_entries')
-      .select('*')
-      .eq('user_id', uid)
-      .gte('date', startDate)
-      .lt('date', endDate)
-      .order('date', { ascending: true });
+    const { data, error } = await db().rpc('get_mood_calendar_data', {
+      p_user_id: uid,
+      p_year: year,
+      p_month: month + 1,
+    });
     if (error) throw error;
-    return data || [];
+    return (data || []).map(row => ({
+      date: row.entry_date,
+      mood: row.mood,
+      triggers: row.triggers,
+      note: row.note,
+    }));
   }
 
   async function save(moodValue, triggers, note) {

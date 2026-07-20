@@ -260,15 +260,18 @@ window.Notara.FinanceTracker = (() => {
     const canvas = document.getElementById('finance-trend-chart');
     if (!canvas) return;
 
-    const months = [];
-    for (let i = 5; i >= 0; i--) {
-      const d = new Date(_currentYear, _currentMonth - i, 1);
-      const y = d.getFullYear();
-      const m = d.getMonth();
-      const summary = await getMonthlySummary(y, m);
+    const { data: trendData } = await db().rpc('get_finance_monthly_trend', {
+      p_user_id: _userId(),
+      p_months: 6,
+    });
+
+    const months = (trendData || []).map(row => {
+      const d = new Date(row.year, row.month - 1, 1);
       const label = d.toLocaleDateString('id-ID', { month: 'short' });
-      months.push({ label, income: summary.income, expense: summary.expense });
-    }
+      return { label, income: Number(row.total_income), expense: Number(row.total_expense) };
+    });
+
+    if (!months.length) return;
 
     const dpr = window.devicePixelRatio || 1;
     const rect = canvas.getBoundingClientRect();
