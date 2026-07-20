@@ -55,14 +55,9 @@
 }
 
 .nav-section-label {
-  font-size: 0.65rem;
-  font-weight: 800;
-  color: var(--text-1);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  padding: 4px;
-  margin-top: 6px;
-  border-bottom: var(--border-w) solid var(--border-strong);
+  font-size: 0.65rem; font-weight: 800; color: var(--text-1); text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 6px 8px; margin-top: 8px; margin-bottom: 2px;
+  background: var(--surface-hover); border: var(--border-w) solid var(--border-strong); border-radius: var(--radius-sm);
 }
 
 .nav-item {
@@ -416,7 +411,7 @@
 [data-style="saas"] .sidebar { border-right: 1px solid var(--border); }
 [data-style="saas"] .sidebar-header { border-bottom: 1px solid var(--border); }
 [data-style="saas"] .sidebar-nav { gap: 2px; }
-[data-style="saas"] .nav-section-label { border-bottom: 1px solid var(--border); }
+[data-style="saas"] .nav-section-label { border-radius:var(--radius-md); border:1px solid var(--border); background:transparent; }
 [data-style="saas"] .nav-item { border-radius: var(--radius-md); border: 1px solid transparent; }
 [data-style="saas"] .nav-item:hover { box-shadow: none; transform: none; border-color: var(--border); }
 [data-style="saas"] .nav-item.active { box-shadow: 0 2px 8px var(--accent-glow); transform: none; border-color: transparent; }
@@ -447,7 +442,7 @@
    ============================================ */
 [data-style="retro-gazette"] .sidebar { border-right: 1px solid var(--border-strong); }
 [data-style="retro-gazette"] .sidebar-header { border-bottom: 1px solid var(--border-strong); }
-[data-style="retro-gazette"] .nav-section-label { border-bottom: 1px solid var(--border-strong); letter-spacing: 0.1em; }
+[data-style="retro-gazette"] .nav-section-label { border-radius:var(--radius-sm); border:1px solid var(--border-strong); box-shadow:1px 1px 0px var(--border-strong); letter-spacing:0.08em; font-weight:900; }
 [data-style="retro-gazette"] .nav-item { border-radius: var(--radius-sm); border: 1px solid transparent; font-weight: 900; letter-spacing: 0.03em; }
 [data-style="retro-gazette"] .nav-item:hover { box-shadow: 1px 1px 0px var(--border-strong); transform: translate(-1px, -1px); border-color: var(--border-strong); }
 [data-style="retro-gazette"] .nav-item.active { box-shadow: 2px 2px 0px var(--border-strong); transform: translate(-1px, -1px); border-color: var(--border-strong); }
@@ -480,7 +475,7 @@
    ============================================ */
 [data-style="skeuomorphism"] .sidebar { border-right: 1px solid var(--border); box-shadow: var(--shadow-md); }
 [data-style="skeuomorphism"] .sidebar-header { border-bottom: 1px solid var(--border); }
-[data-style="skeuomorphism"] .nav-section-label { border-bottom: 1px solid var(--border); }
+[data-style="skeuomorphism"] .nav-section-label { border-radius:var(--radius-md); border:1px solid var(--border); background:var(--surface); box-shadow:var(--shadow-sm); }
 [data-style="skeuomorphism"] .nav-item { border-radius: var(--radius-md); border: 1px solid transparent; }
 [data-style="skeuomorphism"] .nav-item:hover { border-color: var(--border); }
 [data-style="skeuomorphism"] .nav-item.active { box-shadow: var(--shadow-sm); border-color: var(--border-strong); background: var(--accent); color: var(--bg); }
@@ -511,7 +506,7 @@
    ============================================ */
 [data-style="neumorphism"] .sidebar { border-right: none; box-shadow: var(--shadow-md); background: var(--bg); }
 [data-style="neumorphism"] .sidebar-header { border-bottom: none; }
-[data-style="neumorphism"] .nav-section-label { border-bottom: none; }
+[data-style="neumorphism"] .nav-section-label { border-radius:var(--radius-md); border:none; background:var(--bg); box-shadow:var(--shadow-sm); }
 [data-style="neumorphism"] .nav-item { border-radius: var(--radius-md); border: none; background: var(--bg); }
 [data-style="neumorphism"] .nav-item:hover { box-shadow: var(--shadow-sm); border: none; }
 [data-style="neumorphism"] .nav-item.active { box-shadow: var(--shadow-active); border: none; background: var(--bg); color: var(--accent); }

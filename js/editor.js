@@ -608,13 +608,25 @@ window.Notara.Editor = (() => {
 
     let _savedSel = null;
 
+    function _flipToolbarDropdown(wrap) {
+      const menu = wrap.querySelector('.toolbar-dropdown-menu');
+      if (!menu) return;
+      menu.classList.remove('flip-right', 'flip-bottom');
+      const rect = menu.getBoundingClientRect();
+      if (rect.right > window.innerWidth) menu.classList.add('flip-right');
+      if (rect.bottom > window.innerHeight) menu.classList.add('flip-bottom');
+    }
+
     toolbar?.querySelectorAll('.toolbar-dropdown-trigger').forEach(btn => {
       btn.addEventListener('click', function(e) {
         e.stopPropagation();
         const wrap = this.closest('.dropdown-wrap');
         const isOpen = wrap.classList.contains('open');
         document.querySelectorAll('.dropdown-wrap.open').forEach(w => w.classList.remove('open'));
-        if (!isOpen) wrap.classList.add('open');
+        if (!isOpen) {
+          wrap.classList.add('open');
+          _flipToolbarDropdown(wrap);
+        }
       });
     });
 

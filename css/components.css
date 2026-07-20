@@ -294,6 +294,9 @@ body.editor-view .mobile-bottom-nav { display: none !important; }
 }
 .toolbar-dropdown-wrap.open .toolbar-dropdown-menu,
 .dropdown-wrap.open .toolbar-dropdown-menu { display: block; }
+.toolbar-dropdown-menu { transition: none; }
+.toolbar-dropdown-menu.flip-right { left:auto; right:0; }
+.toolbar-dropdown-menu.flip-bottom { top:auto; bottom:calc(100% + 4px); }
 .toolbar-dropdown-menu .dropdown-item {
   padding: 6px 10px; font-size: 0.75rem; font-weight: 700;
   border-bottom: var(--border-w) solid var(--border-strong);

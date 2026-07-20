@@ -272,6 +272,9 @@
 [data-style="saas"] .note-card.ms-selected::after { border-radius: 50%; box-shadow: none; }
 [data-style="saas"] .flipcard-wrap.ms-selected .flipcard-front { border-radius: var(--radius-lg); box-shadow: 0 0 0 2px var(--accent); }
 [data-style="saas"] .flipcard-wrap.ms-selected .flipcard-front::after { border-radius: 50%; box-shadow: none; }
+[data-style="saas"] .heatmap-section { border-radius:var(--radius-lg); box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+[data-style="saas"] .heatmap-title { border-bottom:1px solid var(--border); letter-spacing:normal; text-transform:uppercase; }
+[data-style="saas"] .heatmap-legend-cell { border-radius:var(--radius-sm); }
 
 /* ============================================
    RETRO GAZETTE MODE - Tag Overrides
@@ -300,6 +303,9 @@
 [data-style="retro-gazette"] .new-post-card { border-radius: var(--radius-md); border: 1px solid var(--border-strong); box-shadow: 2px 2px 0px var(--border-strong); }
 
 [data-style="retro-gazette"] .heatmap-cell { border-radius: var(--radius-sm); border: 1px solid var(--border-strong); }
+[data-style="retro-gazette"] .heatmap-section { border-radius:var(--radius-md); border:1px solid var(--border-strong); box-shadow:2px 2px 0px var(--border-strong); }
+[data-style="retro-gazette"] .heatmap-title { border-bottom:1px solid var(--border-strong); letter-spacing:0.08em; font-weight:900; }
+[data-style="retro-gazette"] .heatmap-legend-cell { border-radius:var(--radius-sm); }
 
 [data-style="retro-gazette"] .pomo-collapsed { border-radius: var(--radius-md); border: 1px solid var(--border-strong); box-shadow: 2px 2px 0px var(--border-strong); }
 [data-style="retro-gazette"] .pomo-collapsed:hover { box-shadow: 3px 3px 0px var(--border-strong); transform: translate(-1px, -1px); }
@@ -354,6 +360,9 @@
 [data-style="skeuomorphism"] .new-post-card { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); background: var(--surface); }
 
 [data-style="skeuomorphism"] .heatmap-cell { border-radius: var(--radius-sm); }
+[data-style="skeuomorphism"] .heatmap-section { border-radius:var(--radius-lg); box-shadow:var(--shadow-md); }
+[data-style="skeuomorphism"] .heatmap-title { border-bottom:1px solid var(--border); }
+[data-style="skeuomorphism"] .heatmap-legend-cell { border-radius:var(--radius-sm); box-shadow:var(--shadow-sm); }
 
 [data-style="skeuomorphism"] .pomo-collapsed { border-radius: var(--radius-lg); box-shadow: var(--shadow-md); background: var(--surface); }
 [data-style="skeuomorphism"] .pomo-collapsed:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
@@ -408,6 +417,9 @@
 [data-style="neumorphism"] .new-post-card { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: none; background: var(--bg); }
 
 [data-style="neumorphism"] .heatmap-cell { border-radius: var(--radius-sm); }
+[data-style="neumorphism"] .heatmap-section { border-radius:var(--radius-lg); box-shadow:var(--shadow-md); border:none; background:var(--bg); }
+[data-style="neumorphism"] .heatmap-title { border-bottom:none; }
+[data-style="neumorphism"] .heatmap-legend-cell { border-radius:var(--radius-sm); box-shadow:var(--shadow-sm); border:none; }
 
 [data-style="neumorphism"] .pomo-collapsed { border-radius: var(--radius-lg); box-shadow: var(--shadow-md); border: none; background: var(--bg); }
 [data-style="neumorphism"] .pomo-collapsed:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
