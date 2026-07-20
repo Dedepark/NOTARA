@@ -149,6 +149,7 @@ window.Notara.HabitTracker = (() => {
   }
 
   let _currentDate = _today();
+  let _isRendering = false;
 
   const DEFAULTS = [
     'Minum Air 2L', 'Olahraga 30 Menit', 'Membaca 15 Menit',
@@ -220,8 +221,7 @@ window.Notara.HabitTracker = (() => {
 
     document.querySelectorAll('.habit-week-day').forEach(el => {
       el.addEventListener('click', () => {
-        _currentDate = el.dataset.date;
-        renderPage();
+        _showDayDetail(el.dataset.date);
       });
     });
 
@@ -280,22 +280,59 @@ window.Notara.HabitTracker = (() => {
   }
 
   function _bindDateNav() {
-    document.getElementById('habit-prev-btn')?.addEventListener('click', () => {
+    document.getElementById('habit-prev-btn')?.addEventListener('click', async () => {
+      if (_isRendering) return;
+      _isRendering = true;
       const d = new Date(_currentDate + 'T00:00:00');
       d.setDate(d.getDate() - 1);
       _currentDate = d.toISOString().slice(0, 10);
-      renderPage();
+      await renderPage();
+      _isRendering = false;
     });
-    document.getElementById('habit-next-btn')?.addEventListener('click', () => {
+    document.getElementById('habit-next-btn')?.addEventListener('click', async () => {
+      if (_isRendering) return;
+      _isRendering = true;
       const d = new Date(_currentDate + 'T00:00:00');
       d.setDate(d.getDate() + 1);
       _currentDate = d.toISOString().slice(0, 10);
-      renderPage();
+      await renderPage();
+      _isRendering = false;
     });
-    document.getElementById('habit-today-btn')?.addEventListener('click', () => {
+    document.getElementById('habit-today-btn')?.addEventListener('click', async () => {
+      if (_isRendering) return;
+      _isRendering = true;
       _currentDate = _today();
-      renderPage();
+      await renderPage();
+      _isRendering = false;
     });
+  }
+
+  async function _showDayDetail(date) {
+    const [habits, logs] = await Promise.all([getAll(), getLogsByDate(date)]);
+    const completedIds = new Set(logs.filter(l => l.completed).map(l => l.habit_id));
+    const done = habits.filter(h => completedIds.has(h.id)).length;
+    const total = habits.length;
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    const dateLabel = new Date(date + 'T00:00:00').toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+    let listHtml = habits.map(h => {
+      const isDone = completedIds.has(h.id);
+      const icon = isDone ? '<i class="ph-fill ph-check-circle" style="color:var(--label-easy)"></i>' : '<i class="ph ph-x-circle" style="color:var(--text-3)"></i>';
+      const status = isDone ? 'Selesai' : 'Belum';
+      return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border-strong)"><span>${icon}</span><span style="flex:1;font-size:0.85rem;font-weight:700;color:var(--text-1)">${_esc(h.name)}</span><span style="font-size:0.7rem;color:var(--text-3)">${status}</span></div>`;
+    }).join('');
+
+    UI.modal({
+      title: `<i class="ph ph-calendar-blank"></i> ${dateLabel}`,
+      body: `
+        <div>${listHtml}</div>
+        <div style="text-align:center;margin-top:var(--space-md);font-size:0.85rem;font-weight:800;color:var(--accent)">${done}/${total} selesai (${pct}%)</div>
+      `,
+      footer: `<button class="btn-ghost" id="day-detail-close">Tutup</button>`,
+    });
+    setTimeout(() => {
+      document.getElementById('day-detail-close')?.addEventListener('click', () => document.getElementById('modal-close')?.click());
+    }, 60);
   }
 
   async function _renderWeeklyCalendar(habits) {
@@ -326,7 +363,15 @@ window.Notara.HabitTracker = (() => {
     });
 
     let html = '<div class="habit-week-calendar">';
-    html += '<div class="habit-week-title"><i class="ph ph-calendar-blank"></i> Minggu Ini</div>';
+    const todayMonday = new Date();
+    const todayDow = todayMonday.getDay();
+    const todayMondayOffset = todayDow === 0 ? -6 : 1 - todayDow;
+    todayMonday.setDate(todayMonday.getDate() + todayMondayOffset);
+    const isCurrentWeek = monday.toISOString().slice(0, 10) === todayMonday.toISOString().slice(0, 10);
+
+    const monthNames = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    const weekTitle = isCurrentWeek ? 'Minggu Ini' : `${monday.getDate()} - ${sunday.getDate()} ${monthNames[sunday.getMonth()]} ${sunday.getFullYear()}`;
+    html += `<div class="habit-week-title"><i class="ph ph-calendar-blank"></i> ${weekTitle}</div>`;
     html += '<div class="habit-week-grid">';
 
     for (let i = 0; i < 7; i++) {
