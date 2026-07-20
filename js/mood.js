@@ -142,7 +142,6 @@ window.Notara.MoodTracker = (() => {
     if (todayMood) { html += _renderSummary(todayMood); } else { html += _renderForm(); }
     html += `<div id="mood-weekly-chart-wrap"></div>`;
     html += `<div id="mood-calendar-wrap"></div>`;
-    html += `<div id="mood-detail-wrap"></div>`;
     html += '</div>';
     main.innerHTML = html;
 
@@ -380,8 +379,6 @@ window.Notara.MoodTracker = (() => {
       const calWrap = document.getElementById('mood-calendar-wrap');
       if (calWrap) calWrap.innerHTML = await _renderCalendar();
       _bindCalendarEvents();
-      const detailWrap = document.getElementById('mood-detail-wrap');
-      if (detailWrap) detailWrap.innerHTML = '';
     });
 
     document.getElementById('mood-cal-next')?.addEventListener('click', async () => {
@@ -391,8 +388,6 @@ window.Notara.MoodTracker = (() => {
       const calWrap = document.getElementById('mood-calendar-wrap');
       if (calWrap) calWrap.innerHTML = await _renderCalendar();
       _bindCalendarEvents();
-      const detailWrap = document.getElementById('mood-detail-wrap');
-      if (detailWrap) detailWrap.innerHTML = '';
     });
 
     document.querySelectorAll('.mood-calendar-day[data-date]').forEach(el => {
@@ -400,8 +395,15 @@ window.Notara.MoodTracker = (() => {
         _selectedCalDate = el.dataset.date;
         document.querySelectorAll('.mood-calendar-day').forEach(d => d.removeAttribute('data-selected'));
         el.setAttribute('data-selected', 'true');
-        const detailWrap = document.getElementById('mood-detail-wrap');
-        if (detailWrap) detailWrap.innerHTML = await _renderDayDetail(el.dataset.date);
+        const detailHtml = await _renderDayDetail(el.dataset.date);
+        UI.modal({
+          title: `<i class="ph ph-calendar-blank"></i> ${new Date(el.dataset.date+'T00:00:00').toLocaleDateString('id-ID',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}`,
+          body: detailHtml,
+          footer: `<button class="btn-ghost" id="mood-detail-close">Tutup</button>`,
+        });
+        setTimeout(() => {
+          document.getElementById('mood-detail-close')?.addEventListener('click', () => document.getElementById('modal-close')?.click());
+        }, 60);
       });
     });
   }

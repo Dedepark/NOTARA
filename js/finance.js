@@ -17,6 +17,11 @@ window.Notara.FinanceTracker = (() => {
     return `${months[month]} ${year}`;
   }
 
+  function _isCurrentMonth() {
+    const now = new Date();
+    return _currentMonth === now.getMonth() && _currentYear === now.getFullYear();
+  }
+
   function _userId() { return Auth()?.getUser()?.id; }
   function _uuid() { return crypto.randomUUID(); }
   function _now()  { return new Date().toISOString(); }
@@ -126,7 +131,9 @@ window.Notara.FinanceTracker = (() => {
     const summary = await getMonthlySummary(_currentYear, _currentMonth);
 
     let html = '<div class="tracker-page page-enter">';
-    html += `<div class="tracker-header"><h2><i class="ph ph-wallet"></i> Keuangan</h2><div style="display:flex;align-items:center;gap:6px"><button class="icon-btn" id="finance-prev" style="width:28px;height:28px"><i class="ph ph-caret-left"></i></button><span style="font-size:0.85rem;font-weight:800;color:var(--text-1);min-width:140px;text-align:center">${_monthLabel(_currentYear, _currentMonth)}</span><button class="icon-btn" id="finance-next" style="width:28px;height:28px"><i class="ph ph-caret-right"></i></button><button class="btn-primary" id="finance-add-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem"><i class="ph ph-plus"></i> Transaksi Baru</button></div></div>`;
+    const monthBtnLabel = _isCurrentMonth() ? _monthLabel(_currentYear, _currentMonth) : 'Kembali ke Bulan Ini';
+    const monthBtnIcon = _isCurrentMonth() ? 'ph-caret-down' : 'ph-arrow-left';
+    html += `<div class="tracker-header"><h2><i class="ph ph-wallet"></i> Keuangan</h2><div style="display:flex;gap:6px"><button class="btn-ghost" id="finance-month-btn" style="font-size:0.8rem;padding:0.35rem 0.7rem;display:flex;align-items:center;gap:4px"><i class="ph ${monthBtnIcon}"></i> ${monthBtnLabel}</button><button class="btn-primary" id="finance-add-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem"><i class="ph ph-plus"></i> Transaksi Baru</button></div></div>`;
 
     html += `<div class="finance-balance-card">`;
     html += `<div class="finance-balance-label">Saldo Bulan Ini</div>`;
@@ -198,17 +205,68 @@ window.Notara.FinanceTracker = (() => {
     _bindDashboardEvents();
   }
 
+  function _showMonthPicker() {
+    const months = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    const now = new Date();
+    let pickerYear = _currentYear;
+
+    function renderPickerBody() {
+      let grid = '<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px">';
+      months.forEach((name, i) => {
+        const isActive = i === _currentMonth && pickerYear === _currentYear;
+        const isNow = i === now.getMonth() && pickerYear === now.getFullYear();
+        const style = isActive
+          ? 'background:var(--accent);color:var(--bg);border-color:var(--accent)'
+          : isNow
+            ? 'border-color:var(--accent);color:var(--accent)'
+            : '';
+        grid += `<button class="btn-ghost finance-month-option" data-month="${i}" data-year="${pickerYear}" style="padding:10px 6px;font-size:0.8rem;font-weight:700;${style}">${name.substring(0,3)}</button>`;
+      });
+      grid += '</div>';
+      return grid;
+    }
+
+    const m = UI.modal({
+      title: '<i class="ph ph-calendar-blank"></i> Pilih Bulan',
+      body: `
+        <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:var(--space-md)">
+          <button class="icon-btn" id="mp-prev" style="width:28px;height:28px"><i class="ph ph-caret-left"></i></button>
+          <span style="font-size:1rem;font-weight:800;color:var(--text-1)">${pickerYear}</span>
+          <button class="icon-btn" id="mp-next" style="width:28px;height:28px"><i class="ph ph-caret-right"></i></button>
+        </div>
+        <div id="mp-grid">${renderPickerBody()}</div>
+      `,
+      footer: '',
+    });
+
+    setTimeout(() => {
+      document.getElementById('mp-prev')?.addEventListener('click', () => {
+        pickerYear--;
+        document.getElementById('mp-grid').innerHTML = renderPickerBody();
+        bindMonthClicks();
+      });
+      document.getElementById('mp-next')?.addEventListener('click', () => {
+        pickerYear++;
+        document.getElementById('mp-grid').innerHTML = renderPickerBody();
+        bindMonthClicks();
+      });
+      bindMonthClicks();
+
+      function bindMonthClicks() {
+        document.querySelectorAll('.finance-month-option').forEach(btn => {
+          btn.addEventListener('click', () => {
+            _currentMonth = parseInt(btn.dataset.month);
+            _currentYear = parseInt(btn.dataset.year);
+            m.close();
+            _renderDashboard();
+          });
+        });
+      }
+    }, 60);
+  }
+
   function _bindDashboardEvents() {
-    document.getElementById('finance-prev')?.addEventListener('click', () => {
-      _currentMonth--;
-      if (_currentMonth < 0) { _currentMonth = 11; _currentYear--; }
-      _renderDashboard();
-    });
-    document.getElementById('finance-next')?.addEventListener('click', () => {
-      _currentMonth++;
-      if (_currentMonth > 11) { _currentMonth = 0; _currentYear++; }
-      _renderDashboard();
-    });
+    document.getElementById('finance-month-btn')?.addEventListener('click', _showMonthPicker);
     document.getElementById('finance-add-btn')?.addEventListener('click', _showAddForm);
 
     document.querySelectorAll('.finance-tx-edit').forEach(btn => {
