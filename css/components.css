@@ -165,15 +165,29 @@
   .modal:has(.cal-layout) { max-width: 620px; }
 }
 @media (max-width: 599px) {
-  .modal:has(.cal-layout) { max-width: 100%; height: 100dvh; max-height: 100dvh; border-radius: 0; border: none; display: flex; flex-direction: column; }
-  .modal:has(.cal-layout) .modal-body { flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
-  .modal:has(.cal-layout) .cal-layout { height: 100%; max-height: none; display: flex; flex-direction: column; gap: 0; }
-  .modal:has(.cal-layout) .cal-left { flex: none; border-bottom: var(--border-w) solid var(--border-strong); }
-  .modal:has(.cal-layout) .cal-right { flex: 1; min-height: 0; max-height: none; overflow-y: auto; border-top: none; padding-top: 12px; }
-  .modal:has(.cal-layout) .cal-expand-body { max-height: none !important; overflow: visible !important; }
-  .modal:has(.cal-layout) .cal-rem-list { max-height: none; overflow: visible; }
-  .modal:has(.cal-layout) .cal-hol-list { max-height: none; overflow: visible; }
+  .modal:has(.cal-layout) { max-width:100%; height:auto; max-height:85dvh; border-radius:20px 20px 0 0; border:none; display:flex; flex-direction:column; transform:translateY(100%); transition:transform 0.3s var(--ease-smooth); }
+  .modal-overlay.open .modal:has(.cal-layout) { transform:translateY(0); }
+  .modal:has(.cal-layout) .modal-header { border-radius:20px 20px 0 0; position:relative; }
+  .modal:has(.cal-layout) .modal-header::before { content:''; position:absolute; top:8px; left:50%; transform:translateX(-50%); width:36px; height:4px; border-radius:2px; background:var(--text-3); }
+  .modal:has(.cal-layout) .modal-body { flex:1; min-height:0; overflow:hidden; }
+  .modal:has(.cal-layout) .cal-layout { height:100%; display:flex; flex-direction:column; gap:0; }
+  .modal:has(.cal-layout) .cal-left { flex:none; border-bottom:none; padding-bottom:0; }
+  .modal:has(.cal-layout) .cal-grid { gap:3px; }
+  .modal:has(.cal-layout) .cal-cell:not(.cal-empty):not(.cal-day-name) { min-width:40px; min-height:40px; font-size:0.85rem; }
+  .modal:has(.cal-layout) .cal-day-name { font-size:0.65rem; }
+  .modal:has(.cal-layout) .cal-nav-btn { width:44px; height:44px; }
+  .modal:has(.cal-layout) .cal-right { flex:1; min-height:0; border-top:none; padding-top:0; }
+  .modal:has(.cal-layout) .cal-tab-bar { display:flex; gap:0; border-bottom:var(--border-w) solid var(--border-strong); background:var(--bg); flex-shrink:0; }
+  .modal:has(.cal-layout) .cal-tab { flex:1; padding:12px 8px; font-size:0.75rem; font-weight:700; color:var(--text-2); display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; border:none; background:transparent; transition:all var(--dur-fast); border-bottom:2px solid transparent; }
+  .modal:has(.cal-layout) .cal-tab.active { color:var(--accent); border-bottom-color:var(--accent); background:var(--accent-light); }
+  .modal:has(.cal-layout) .cal-tab i { font-size:1rem; }
+  .modal:has(.cal-layout) .cal-tab-panel { display:none; flex:1; overflow-y:auto; padding:var(--space-md); }
+  .modal:has(.cal-layout) .cal-tab-panel.active { display:block; }
+  .modal:has(.cal-layout) .cal-rem-list { max-height:none; overflow:visible; }
+  .modal:has(.cal-layout) .cal-hol-list { max-height:none; overflow:visible; }
+  .modal:has(.cal-layout) .cal-expand-body { max-height:none !important; overflow:visible !important; }
 }
+.cal-tab-bar { display:none; }
 
 /* Calendar Modal */
 .cal-layout { display: flex; flex-direction: column; gap: 16px; }

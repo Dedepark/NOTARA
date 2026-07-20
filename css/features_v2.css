@@ -172,10 +172,10 @@
 
 /* NOTE STACKING / GROUP */
 .note-group-card { background: var(--surface); border: var(--border-w) solid var(--border-strong); margin-bottom: 12px; box-shadow: var(--shadow-sm); animation: card-in var(--dur-base) var(--ease-out) both; }
-.note-group-header { display: flex; align-items: center; gap: 8px; padding: 10px; cursor: pointer; background: var(--bg); border-bottom: var(--border-w) solid var(--border-strong); }
+.note-group-header { display:flex; align-items:center; gap:8px; padding:10px; cursor:pointer; background:var(--bg); border-bottom:2px solid var(--border-strong); box-shadow:2px 2px 0 var(--shadow-color); }
 .note-group-icon { color: var(--text-1); font-size: 1rem; flex-shrink: 0; }
 .note-group-name { flex: 1; font-size: 0.95rem; font-weight: 900; color: var(--text-1); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.note-group-count { font-size: 0.75rem; font-weight: 800; color: var(--text-1); border: var(--border-w) solid var(--border-strong); padding: 1px 6px; flex-shrink: 0; box-shadow: 1px 1px 0 var(--border-strong); }
+.note-group-count { font-size:0.75rem; font-weight:800; color:var(--text-1); border:2px solid var(--border-strong); padding:1px 6px; flex-shrink:0; box-shadow:2px 2px 0 var(--border-strong); }
 .note-group-body { padding: 10px; background: var(--surface); }
 
 /* Multi-select bar (in topbar) */
@@ -275,6 +275,12 @@
 [data-style="saas"] .heatmap-section { border-radius:var(--radius-lg); box-shadow:0 1px 3px rgba(0,0,0,0.08); }
 [data-style="saas"] .heatmap-title { border-bottom:1px solid var(--border); letter-spacing:normal; text-transform:uppercase; }
 [data-style="saas"] .heatmap-legend-cell { border-radius:var(--radius-sm); }
+[data-style="saas"] .note-group-card { border-radius:var(--radius-lg); }
+[data-style="saas"] .note-group-header { border-radius:var(--radius-lg) var(--radius-lg) 0 0; border-bottom:1px solid var(--border); box-shadow:0 1px 3px rgba(0,0,0,0.08); }
+[data-style="saas"] .note-group-icon { color:var(--accent); }
+[data-style="saas"] .note-group-count { border-radius:var(--radius-full); box-shadow:0 1px 2px rgba(0,0,0,0.06); border:1px solid var(--border); }
+[data-style="saas"] .note-group-body { border-radius:0 0 var(--radius-lg) var(--radius-lg); }
+[data-style="saas"] .note-group-card:hover { box-shadow:0 2px 6px rgba(0,0,0,0.12); transform:translateY(-1px); }
 
 /* ============================================
    RETRO GAZETTE MODE - Tag Overrides
@@ -328,6 +334,9 @@
 [data-style="retro-gazette"] .note-group-card { border-radius: var(--radius-md); border: 1px solid var(--border-strong); box-shadow: 2px 2px 0px var(--border-strong); }
 [data-style="retro-gazette"] .note-group-header { border-bottom: 1px solid var(--border-strong); }
 [data-style="retro-gazette"] .note-group-count { border-radius: var(--radius-sm); box-shadow: 1px 1px 0px var(--border-strong); font-weight: 900; }
+[data-style="retro-gazette"] .note-group-header { box-shadow:2px 2px 0 var(--border-strong); }
+[data-style="retro-gazette"] .note-group-count { letter-spacing:0.05em; text-transform:uppercase; }
+[data-style="retro-gazette"] .note-group-card:hover { box-shadow:3px 3px 0 var(--border-strong); transform:translate(-1px,-1px); }
 
 [data-style="retro-gazette"] .topbar-ms-action.btn-primary { border-radius: var(--radius-sm); box-shadow: 1px 1px 0px rgba(0,0,0,0.2); }
 [data-style="retro-gazette"] .topbar-ms-action.btn-ghost { border-radius: var(--radius-sm); box-shadow: 1px 1px 0px rgba(0,0,0,0.2); }
@@ -385,6 +394,8 @@
 [data-style="skeuomorphism"] .note-group-card { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); background: var(--surface); }
 [data-style="skeuomorphism"] .note-group-header { border-bottom: 1px solid var(--border); }
 [data-style="skeuomorphism"] .note-group-count { border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
+[data-style="skeuomorphism"] .note-group-icon { box-shadow:var(--shadow-sm); }
+[data-style="skeuomorphism"] .note-group-card:hover { box-shadow:var(--shadow-md); transform:translateY(-1px); }
 
 [data-style="skeuomorphism"] .topbar-ms-action.btn-primary { border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
 [data-style="skeuomorphism"] .topbar-ms-action.btn-ghost { border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
@@ -442,6 +453,10 @@
 [data-style="neumorphism"] .note-group-card { border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); border: none; background: var(--bg); }
 [data-style="neumorphism"] .note-group-header { border-bottom: none; }
 [data-style="neumorphism"] .note-group-count { border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
+[data-style="neumorphism"] .note-group-header { border-bottom:none; box-shadow:var(--shadow-sm); border-radius:var(--radius-lg) var(--radius-lg) 0 0; }
+[data-style="neumorphism"] .note-group-icon { box-shadow:var(--shadow-sm); }
+[data-style="neumorphism"] .note-group-count { border:none; }
+[data-style="neumorphism"] .note-group-card:hover { box-shadow:var(--shadow-lg); transform:translateY(-1px); }
 
 [data-style="neumorphism"] .topbar-ms-action.btn-primary { border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); border: none; }
 [data-style="neumorphism"] .topbar-ms-action.btn-ghost { border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); border: none; background: var(--bg); }

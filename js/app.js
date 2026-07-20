@@ -823,21 +823,35 @@ window.Notara = window.Notara || {};
 
     const detailHtml = _calSelectedDate ? _buildCalendarDetailHtml(_calSelectedDate) : '';
 
+    const isMobile = window.innerWidth < 600;
+
+    const reminderPanel = `<div class="cal-tab-panel${isMobile ? '' : ' active'}" data-tab="reminder">${reminderListHtml}</div>`;
+    const holidayPanel = `<div class="cal-tab-panel${isMobile ? '' : ''}" data-tab="holiday">${monthHolidays || '<div class="cal-empty-msg">Tidak ada hari besar bulan ini</div>'}</div>`;
+
+    const tabBar = isMobile ? `
+      <div class="cal-tab-bar" id="cal-tab-bar">
+        <button class="cal-tab active" data-cal-tab="calendar"><i class="fa-solid fa-calendar"></i> Kalender</button>
+        <button class="cal-tab" data-cal-tab="reminder"><i class="fa-solid fa-bell"></i> Pengingat</button>
+        <button class="cal-tab" data-cal-tab="holiday"><i class="fa-solid fa-flag"></i> Hari Besar</button>
+      </div>` : '';
+
+    const calPanel = `<div class="cal-tab-panel active" data-tab="calendar">
+      <div class="cal-grid">${dayNames.map(d => `<div class="cal-cell cal-day-name">${d}</div>`).join('')}${cells}</div>
+      <div id="cal-detail">${detailHtml}</div>
+    </div>`;
+
     return `
       <div class="cal-layout">
+        ${tabBar}
         <div class="cal-left">
           <div class="cal-nav">
             <button class="icon-btn cal-nav-btn" id="cal-prev"><i class="fa-solid fa-chevron-left"></i></button>
             <span class="cal-month-label">${monthNames[_calMonth]} ${_calYear}</span>
             <button class="icon-btn cal-nav-btn" id="cal-next"><i class="fa-solid fa-chevron-right"></i></button>
           </div>
-          <div class="cal-grid">
-            ${dayNames.map(d => `<div class="cal-cell cal-day-name">${d}</div>`).join('')}
-            ${cells}
-          </div>
-          <div id="cal-detail">${detailHtml}</div>
+          ${isMobile ? `<div class="cal-tab-content">${calPanel}${reminderPanel}${holidayPanel}</div>` : `<div class="cal-grid">${dayNames.map(d => `<div class="cal-cell cal-day-name">${d}</div>`).join('')}${cells}</div><div id="cal-detail">${detailHtml}</div>`}
         </div>
-        <div class="cal-right">
+        ${!isMobile ? `<div class="cal-right">
           <div class="cal-right-section cal-expandable" data-expanded="true">
             <div class="cal-right-title cal-toggle"><i class="fa-solid fa-bell"></i> Pengingat Bulan Ini <i class="fa-solid fa-chevron-down cal-toggle-icon"></i></div>
             <div class="cal-expand-body">${reminderListHtml}</div>
@@ -846,7 +860,7 @@ window.Notara = window.Notara || {};
             <div class="cal-right-title cal-toggle"><i class="fa-solid fa-flag"></i> Hari Besar <i class="fa-solid fa-chevron-down cal-toggle-icon"></i></div>
             <div class="cal-expand-body">${monthHolidays || '<div class="cal-empty-msg">Tidak ada hari besar bulan ini</div>'}</div>
           </div>
-        </div>
+        </div>` : ''}
       </div>
     `;
   }
@@ -957,6 +971,14 @@ window.Notara = window.Notara || {};
     if (!body) return;
 
     body.addEventListener('click', async e => {
+      const calTab = e.target.closest('.cal-tab');
+      if (calTab) {
+        const tabName = calTab.dataset.calTab;
+        body.querySelectorAll('.cal-tab').forEach(t => t.classList.toggle('active', t.dataset.calTab === tabName));
+        body.querySelectorAll('.cal-tab-panel').forEach(p => p.classList.toggle('active', p.dataset.tab === tabName));
+        return;
+      }
+
       const btn = e.target.closest('button');
       const cell = e.target.closest('.cal-cell[data-date]');
       const remItem = e.target.closest('.cal-rem-item');
