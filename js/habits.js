@@ -181,9 +181,10 @@ window.Notara.HabitTracker = (() => {
     const isToday = _currentDate === _today();
 
     let html = '<div class="tracker-page page-enter">';
-    html += `<div class="tracker-header"><h2><i class="ph ph-check-circle"></i> Kebiasaan</h2><div style="display:flex;align-items:center;gap:6px"><button class="icon-btn" id="habit-prev-btn" style="width:28px;height:28px"><i class="ph ph-caret-left"></i></button><span id="habit-date-label" style="font-size:0.85rem;font-weight:800;color:var(--text-1);min-width:180px;text-align:center">${dateLabel}</span><button class="icon-btn" id="habit-next-btn" style="width:28px;height:28px"><i class="ph ph-caret-right"></i></button><button class="btn-ghost" id="habit-today-btn" style="font-size:0.7rem;padding:0.3rem 0.6rem;display:${isToday ? 'none' : 'inline-block'}">Hari Ini</button><button class="btn-primary" id="habit-add-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem"><i class="ph ph-plus"></i> Tambah</button><button class="btn-ghost" id="habit-manage-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem"><i class="ph ph-list"></i> Kelola</button></div></div>`;
+    html += `<div class="tracker-header"><h2><i class="ph ph-check-circle"></i> Kebiasaan</h2><div style="display:flex;gap:6px"><button class="btn-primary" id="habit-add-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem"><i class="ph ph-plus"></i> Tambah</button><button class="btn-ghost" id="habit-manage-btn" style="font-size:0.75rem;padding:0.35rem 0.7rem"><i class="ph ph-list"></i> Kelola</button></div></div>`;
 
     html += `<div class="habit-progress-card">`;
+    html += `<div style="font-size:0.75rem;font-weight:700;color:var(--text-2);margin-bottom:4px">${dateLabel}</div>`;
     html += `<div class="habit-progress-header"><span class="habit-progress-label">Progress Harian</span><span class="habit-progress-pct">${done}/${total} (${pct}%)</span></div>`;
     html += `<div class="habit-progress-bar"><div class="habit-progress-fill" style="width:${pct}%"></div></div>`;
     html += `</div>`;
@@ -235,7 +236,6 @@ window.Notara.HabitTracker = (() => {
 
     _bindChecklistEvents(habits);
     _bindManageEvents();
-    _bindDateNav();
   }
 
   function _bindChecklistEvents(habits) {
@@ -257,6 +257,7 @@ window.Notara.HabitTracker = (() => {
           const card = document.querySelector('.habit-progress-card');
           if (card) {
             card.innerHTML = `
+              <div style="font-size:0.75rem;font-weight:700;color:var(--text-2);margin-bottom:4px">${dateLabel}</div>
               <div class="habit-progress-header"><span class="habit-progress-label">Progress Harian</span><span class="habit-progress-pct">${done}/${total} (${pct}%)</span></div>
               <div class="habit-progress-bar"><div class="habit-progress-fill" style="width:${pct}%"></div></div>
             `;
@@ -277,34 +278,6 @@ window.Notara.HabitTracker = (() => {
   function _bindManageEvents() {
     document.getElementById('habit-add-btn')?.addEventListener('click', () => _showManagePanel(null));
     document.getElementById('habit-manage-btn')?.addEventListener('click', _showManageList);
-  }
-
-  function _bindDateNav() {
-    document.getElementById('habit-prev-btn')?.addEventListener('click', async () => {
-      if (_isRendering) return;
-      _isRendering = true;
-      const d = new Date(_currentDate + 'T00:00:00');
-      d.setDate(d.getDate() - 1);
-      _currentDate = d.toISOString().slice(0, 10);
-      await renderPage();
-      _isRendering = false;
-    });
-    document.getElementById('habit-next-btn')?.addEventListener('click', async () => {
-      if (_isRendering) return;
-      _isRendering = true;
-      const d = new Date(_currentDate + 'T00:00:00');
-      d.setDate(d.getDate() + 1);
-      _currentDate = d.toISOString().slice(0, 10);
-      await renderPage();
-      _isRendering = false;
-    });
-    document.getElementById('habit-today-btn')?.addEventListener('click', async () => {
-      if (_isRendering) return;
-      _isRendering = true;
-      _currentDate = _today();
-      await renderPage();
-      _isRendering = false;
-    });
   }
 
   async function _showDayDetail(date) {
